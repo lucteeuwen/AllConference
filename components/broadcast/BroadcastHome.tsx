@@ -33,12 +33,6 @@ export function BroadcastHome({ data }: { data: HomeData }) {
         }
       />
 
-      {tiles.length > 0 ? (
-        <div className="bc-rail">
-          <ScoreboardRail tiles={tiles} />
-        </div>
-      ) : null}
-
       {featured && home && away ? (
         <section>
           <WashHero home={home} away={away} celebrate={live ? featured.id : false}>
@@ -109,6 +103,12 @@ export function BroadcastHome({ data }: { data: HomeData }) {
         </section>
       ) : null}
 
+      {tiles.length > 0 ? (
+        <div className="bc-rail">
+          <ScoreboardRail tiles={tiles} />
+        </div>
+      ) : null}
+
       <div className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
         <Reveal>
           <section>
@@ -119,7 +119,7 @@ export function BroadcastHome({ data }: { data: HomeData }) {
 
         <Reveal delay={90}>
           <section>
-            <SectionHeader title="Scoring leaders" />
+            <SectionHeader title="Scoring leaders" action="Full list" href="/standings#scoring-leaders" />
             <ScorersSnippet scorers={data.scorers} />
           </section>
         </Reveal>

@@ -54,7 +54,7 @@ export default function StandingsPage() {
       </div>
 
       <Reveal>
-        <section>
+        <section id="scoring-leaders" className="scroll-mt-6">
           <SectionHeader title="Scoring leaders" />
           <ScorersSnippet scorers={getTopScorers(8)} />
         </section>
