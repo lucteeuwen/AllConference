@@ -1,20 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PageHeader } from "@/components/PageHeader";
+import { Lockup } from "@/components/broadcast/Lockup";
+import { ScoreboardRail } from "@/components/broadcast/ScoreboardRail";
+import { buildRailTiles } from "@/lib/rail";
+import { computeStandings, requireTeam } from "@/lib/selectors";
 import { DateStrip, type DayChip } from "@/components/DateStrip";
 import { MatchFilterBar } from "@/components/MatchFilterBar";
-import { MatchCard } from "@/components/MatchCard";
-import { LiveMatchCard } from "@/components/LiveMatchCard";
+import { MatchRow } from "@/components/broadcast/MatchRow";
 import { EmptyState } from "@/components/EmptyState";
 import { applyFilters, filtersToQuery, parseFilters, type MatchFilters } from "@/lib/filters";
 import { formatChipLabel, formatDayLabel, TODAY_KEY } from "@/lib/format";
 import { SEASON_LABEL, dayKey } from "@/lib/data/season";
-import {
-  getAllMatches,
-  getConferenceTeams,
-  groupMatchesByDate,
-  type DayGroup,
-} from "@/lib/selectors";
+import { getAllMatches, getConferenceTeams, groupMatchesByDate, type DayGroup } from "@/lib/selectors";
 
 export const metadata: Metadata = {
   title: "Matches",
@@ -24,14 +21,14 @@ function DaySection({ group, anchor }: { group: DayGroup; anchor?: boolean }) {
   return (
     <section id={anchor ? "today" : undefined} className={anchor ? "scroll-mt-6" : undefined}>
       <div className="mb-3 flex items-baseline justify-between px-1">
-        <h2 className="text-[15px] font-bold text-ink">{formatDayLabel(group.key)}</h2>
-        <span className="text-xs text-ink-faint tabular-nums">
+        <h2 className="bc-label text-[0.78rem] text-ink">{formatDayLabel(group.key)}</h2>
+        <span className="text-[0.72rem] text-ink-faint tabular-nums">
           {group.matches.length} {group.matches.length === 1 ? "match" : "matches"}
         </span>
       </div>
       <div className="space-y-2.5">
         {group.matches.map((match) => (
-          <MatchCard key={match.id} match={match} />
+          <MatchRow key={match.id} match={match} />
         ))}
       </div>
     </section>
@@ -105,36 +102,48 @@ export default async function MatchesPage(props: PageProps<"/matches">) {
       ? [...groups].reverse()
       : groups;
 
+  // The rail leads with what is happening now, then what is next, then what
+  // just finished. Feeding it the season in date order would strand it in
+  // August.
+  const railSource = [
+    ...current.flatMap((group) => group.matches),
+    ...[...past].reverse().flatMap((group) => group.matches),
+  ];
+  const tiles = buildRailTiles(
+    railSource,
+    computeStandings().map((row, index) => ({ row, team: requireTeam(row.teamSlug), rank: index + 1 })),
+    12,
+  );
+
   const shown = splitAtToday
     ? (filters.showPast ? groups : current).reduce((total, group) => total + group.matches.length, 0)
     : visible.length;
 
-  const live = visible.filter((match) => match.status === "live");
 
   return (
     <>
-      <PageHeader title="Matches" subtitle={`${SEASON_LABEL} · CCIW Men's Soccer`}>
+      <Lockup title="Matches" subtitle={`${SEASON_LABEL} · CCIW Men's Soccer`}>
         <DateStrip
           chips={chips}
           allHref={`/matches${filtersToQuery({ ...filters, day: null })}`}
           activeDay={filters.day}
         />
-      </PageHeader>
+      </Lockup>
 
-      <MatchFilterBar
-        filters={filters}
-        teams={getConferenceTeams()}
-        shown={shown}
-        total={all.length}
-      />
-
-      {live.length > 0 ? (
-        <div className="mb-6 space-y-4">
-          {live.map((match) => (
-            <LiveMatchCard key={match.id} match={match} />
-          ))}
+      {tiles.length > 0 ? (
+        <div className="bc-rail mt-6">
+          <ScoreboardRail tiles={tiles} />
         </div>
       ) : null}
+
+      <div className="mt-6">
+        <MatchFilterBar
+          filters={filters}
+          teams={getConferenceTeams()}
+          shown={shown}
+          total={all.length}
+        />
+      </div>
 
       {groups.length === 0 ? (
         <EmptyState

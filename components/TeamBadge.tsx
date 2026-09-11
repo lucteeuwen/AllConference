@@ -26,10 +26,11 @@ export function TeamBadge({ team, size = "md", ring = false }: Props) {
   return (
     <span
       aria-hidden="true"
-      className="team-color inline-flex shrink-0 items-center justify-center rounded-full font-bold tracking-tight"
+      className="team-color inline-flex shrink-0 items-center justify-center font-bold tracking-tight"
       style={{
         width: box,
         height: box,
+        borderRadius: "var(--badge-radius)",
         background: team.primary,
         color: readableInk(team.primary),
         fontSize: text,

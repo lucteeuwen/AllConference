@@ -5,10 +5,10 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /*
- * Tokens are declared through a level of indirection so the theme can flip at
- * runtime. `@theme inline` makes `.bg-surface` emit `var(--surface)` rather
- * than a baked literal, so redefining the raw variables under a
- * `[data-theme]` selector restyles the whole app from one attribute.
+ * Every token resolves through a plain custom property. `@theme inline` makes
+ * `.bg-surface` emit `var(--surface)` rather than a baked literal, so both the
+ * theme switch and the design sidebar can restyle the entire app by setting
+ * properties on the root element, with no rebuild.
  */
 @theme inline {
   --color-navy: var(--navy);
@@ -34,16 +34,19 @@
   --color-live: var(--live);
   --color-brand: var(--brand);
 
-  --radius-card: 16px;
+  --radius-card: var(--card-radius);
+  --radius-control: var(--control-radius);
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-family);
 }
 
+/* ---------------------------------------------------------------------------
+ * Light palette
+ * ------------------------------------------------------------------------ */
 :root {
   color-scheme: light;
 
-  /* NCAA-inspired base palette. Navy is the brand and holds in both themes. */
-  /* The logo's blue. Distinct from the navy chrome by design. */
+  /* The logo's blue. Deliberately distinct from the navy chrome. */
   --brand: #1b62a8;
 
   --navy: #0a1e3c;
@@ -68,25 +71,14 @@
   --draw: #9ca3af;
   --live: #ef4444;
 
-  /* Shadows need to disappear on dark, where they read as grime. */
-  /* Glass variant. Its canvas is part of the design rather than the page
-   * ground, so it carries its own pair of themed values. */
-  --glass-canvas: radial-gradient(120% 80% at 12% 0%, #dce8fa 0%, transparent 55%),
-    radial-gradient(100% 70% at 88% 10%, #e5e1fb 0%, transparent 50%),
-    linear-gradient(180deg, #eff3fa 0%, #e4eaf4 100%);
-  --glass-fill: rgba(255, 255, 255, 0.72);
-  --glass-edge: rgba(255, 255, 255, 0.9);
-  --glass-rule: rgba(16, 24, 40, 0.08);
-  --glass-hover: rgba(255, 255, 255, 0.62);
-  --glass-ink: #111827;
-  --glass-ink-soft: #55607a;
-  --glass-ink-faint: #7d879c;
-  --glass-chip: rgba(16, 24, 40, 0.06);
-
-  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px -16px rgba(16, 24, 40, 0.24);
-  --shadow-lift: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 28px -18px rgba(67, 56, 202, 0.55);
+  /* Shadows are built from this so one strength control can scale them. */
+  --shadow-rgb: 16 24 40;
+  --team-lift: 1;
 }
 
+/* ---------------------------------------------------------------------------
+ * Dark palette
+ * ------------------------------------------------------------------------ */
 :root[data-theme="dark"] {
   color-scheme: dark;
 
@@ -114,30 +106,137 @@
   --draw: #64789e;
   --live: #ff5a5a;
 
-  --glass-canvas: radial-gradient(120% 80% at 12% 0%, #16305a 0%, transparent 55%),
-    radial-gradient(100% 70% at 88% 10%, #1c2f6b 0%, transparent 50%),
-    linear-gradient(180deg, #0a1e3c 0%, #04101f 100%);
-  --glass-fill: rgba(255, 255, 255, 0.06);
-  --glass-edge: rgba(255, 255, 255, 0.12);
-  --glass-rule: rgba(255, 255, 255, 0.08);
-  --glass-hover: rgba(255, 255, 255, 0.05);
-  --glass-ink: #ffffff;
-  --glass-ink-soft: rgba(255, 255, 255, 0.62);
-  --glass-ink-faint: rgba(255, 255, 255, 0.45);
-  --glass-chip: rgba(255, 255, 255, 0.1);
+  --shadow-rgb: 0 0 0;
+  /* Several schools use a navy that vanishes against the dark surface. */
+  --team-lift: 1.5;
+}
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -16px rgba(0, 0, 0, 0.7);
-  --shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -18px rgba(109, 99, 240, 0.7);
+/* ---------------------------------------------------------------------------
+ * Shape, density, type and motion. Shared across both themes and all driven by
+ * the design sidebar.
+ * ------------------------------------------------------------------------ */
+:root {
+  --card-radius: 16px;
+  --control-radius: 999px;
+  --border-width: 1px;
+  --shadow-strength: 1;
+  --density: 1;
+  --page-max: 64rem;
+  --section-gap: 2rem;
+  --badge-radius: 50%;
+
+  --font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-scale: 1;
+  --heading-weight: 900;
+  --label-tracking: 0.12em;
+  --heading-tracking: -0.02em;
+
+  /* Broadcast specifics */
+  --wm-opacity: 0.28;
+  --wm-scale: 1;
+  --wash-strength: 1;
+  --wash-angle: 100deg;
+  --rule-height: 4px;
+  --hero-pad: 1.75rem;
+  --rail-tile: 188px;
+
+  --motion-scale: 1;
 }
 
 html {
   -webkit-text-size-adjust: 100%;
+  font-size: calc(16px * var(--font-scale));
 }
 
 body {
   background: var(--ground);
   color: var(--ink);
   font-family: var(--font-sans);
+}
+
+/* ---------------------------------------------------------------------------
+ * Broadcast primitives. Components use these classes so a single token move in
+ * the sidebar reaches every page at once.
+ * ------------------------------------------------------------------------ */
+
+.bc-shadow {
+  box-shadow:
+    0 1px 2px rgb(var(--shadow-rgb) / calc(0.05 * var(--shadow-strength))),
+    0 8px 24px -16px rgb(var(--shadow-rgb) / calc(0.3 * var(--shadow-strength)));
+}
+.bc-shadow-lift {
+  box-shadow:
+    0 1px 2px rgb(var(--shadow-rgb) / calc(0.05 * var(--shadow-strength))),
+    0 12px 30px -18px rgb(var(--shadow-rgb) / calc(0.55 * var(--shadow-strength)));
+}
+
+.bc-card {
+  border-radius: var(--card-radius);
+  border: var(--border-width) solid var(--line);
+  background: var(--surface);
+}
+.bc-card:not(.bc-flush) {
+  box-shadow:
+    0 1px 2px rgb(var(--shadow-rgb) / calc(0.05 * var(--shadow-strength))),
+    0 8px 24px -16px rgb(var(--shadow-rgb) / calc(0.3 * var(--shadow-strength)));
+}
+
+[data-cards="flat"] .bc-card {
+  box-shadow: none !important;
+}
+[data-cards="outlined"] .bc-card {
+  box-shadow: none !important;
+  border-width: calc(var(--border-width) * 2);
+}
+
+/* Row padding, the single lever behind the density control. */
+.bc-row {
+  padding-block: calc(0.7rem * var(--density));
+}
+.bc-pad {
+  padding: calc(1rem * var(--density));
+}
+
+.bc-stack > * + * {
+  margin-top: var(--section-gap);
+}
+
+.bc-label {
+  letter-spacing: var(--label-tracking);
+  font-weight: var(--heading-weight);
+  text-transform: uppercase;
+}
+.bc-title {
+  font-weight: var(--heading-weight);
+  letter-spacing: var(--heading-tracking);
+}
+
+[data-figures="proportional"] .tabular-nums {
+  font-variant-numeric: normal;
+}
+
+/* Structure toggles. These change which rules apply rather than one value, so
+ * they ride on data attributes instead of custom properties. */
+[data-rail="off"] .bc-rail {
+  display: none;
+}
+[data-watermark="off"] .bc-watermark {
+  display: none;
+}
+[data-rule="off"] .bc-rule {
+  display: none;
+}
+[data-sticky="off"] .bc-sticky {
+  position: static;
+}
+
+/* With the design panel open the page shifts rather than hiding behind it, so
+ * you can see what you are tuning. On phones the panel takes the full width
+ * and overlays instead. */
+@media (min-width: 768px) {
+  [data-design="open"] body {
+    padding-right: 19rem;
+  }
 }
 
 /* Horizontal chip rails scroll without a visible scrollbar. */
@@ -149,27 +248,13 @@ body {
   display: none;
 }
 
-/*
- * Several schools use a very dark navy that all but disappears against the dark
- * surface. Anything painted in a team's own colour carries this class so it
- * gets lifted in dark mode only, leaving light mode exactly as authored.
- */
-[data-theme="dark"] .team-color {
-  filter: brightness(1.5) saturate(1.05);
-}
-
-.shadow-card {
-  box-shadow: var(--shadow-card);
-}
-.shadow-lift {
-  box-shadow: var(--shadow-lift);
-}
-
 /* ---------------------------------------------------------------------------
  * Motion
  *
- * Decorative only. Everything below is switched off under
- * prefers-reduced-motion at the end of this file.
+ * Every duration is multiplied by --motion-scale, so the sidebar's speed
+ * control covers all of it and zero stops everything dead. Each animation
+ * fills `both`, so a zero duration lands straight on the end state rather than
+ * leaving elements invisible.
  * ------------------------------------------------------------------------ */
 
 @keyframes live-pulse {
@@ -177,28 +262,25 @@ body {
   50% { opacity: 0.25; }
 }
 .live-dot {
-  animation: live-pulse 1.4s ease-in-out infinite;
+  animation: live-pulse calc(1.4s * var(--motion-scale)) ease-in-out infinite;
 }
 
-/* Expanding rings behind a LIVE badge. */
 @keyframes radio-wave {
   0% { transform: scale(0.6); opacity: 0.7; }
   100% { transform: scale(2.4); opacity: 0; }
 }
 .radio-wave {
-  animation: radio-wave 2s ease-out infinite;
+  animation: radio-wave calc(2s * var(--motion-scale)) ease-out infinite;
 }
 
-/* The workhorse entrance: fade up into place. */
 @keyframes rise-in {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: none; }
 }
 .rise-in {
-  animation: rise-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: rise-in calc(0.5s * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Hero crests sliding in from their own edge. */
 @keyframes slide-from-left {
   from { opacity: 0; transform: translateX(-40px) scale(0.9); }
   to { opacity: 1; transform: none; }
@@ -208,19 +290,19 @@ body {
   to { opacity: 1; transform: none; }
 }
 .slide-from-left {
-  animation: slide-from-left 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: slide-from-left calc(0.7s * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .slide-from-right {
-  animation: slide-from-right 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: slide-from-right calc(0.7s * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* Watermark crests bleeding off the hero edges. */
 @keyframes watermark-in {
   from { opacity: 0; transform: translateX(var(--watermark-from, 0)) scale(1.15); }
-  to { opacity: var(--watermark-opacity, 0.22); transform: none; }
+  to { opacity: var(--wm-opacity); transform: none; }
 }
 .watermark-in {
-  animation: watermark-in 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: watermark-in calc(1.1s * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* A scored goal blooms a huge numeral that shrinks into place. */
@@ -230,57 +312,17 @@ body {
   100% { opacity: 0; transform: scale(1); }
 }
 .score-bloom {
-  animation: score-bloom 1.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: score-bloom calc(1.6s * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Confetti shard. Each gets its own duration and translation from inline vars. */
 @keyframes confetti-fly {
   0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
   10% { opacity: 1; }
-  100% {
-    opacity: 0;
-    transform: translate(var(--dx), var(--dy)) rotate(var(--spin));
-  }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--spin)); }
 }
 .confetti-shard {
-  animation: confetti-fly var(--dur) cubic-bezier(0.2, 0.6, 0.4, 1) var(--delay) both;
-}
-
-/* Score digits rolling like an odometer. */
-@keyframes odometer-roll {
-  from { transform: translateY(var(--roll-from)); }
-  to { transform: translateY(var(--roll-to)); }
-}
-.odometer-track {
-  animation: odometer-roll 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-/* Continuous ticker. The track holds two copies, so -50% loops seamlessly. */
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-.marquee-track {
-  animation: marquee var(--marquee-duration, 40s) linear infinite;
-}
-
-/* Light sweeping along a ticket perforation. */
-@keyframes perforation-shimmer {
-  0% { transform: translateY(-100%); opacity: 0; }
-  40% { opacity: 1; }
-  100% { transform: translateY(100%); opacity: 0; }
-}
-.perforation-shimmer {
-  animation: perforation-shimmer 3s ease-in-out infinite;
-}
-
-/* Slow drifting glow behind the glass live card. */
-@keyframes glow-drift {
-  0%, 100% { transform: translate(-6%, -4%) scale(1); }
-  50% { transform: translate(6%, 4%) scale(1.12); }
-}
-.glow-drift {
-  animation: glow-drift 14s ease-in-out infinite;
+  animation: confetti-fly calc(var(--dur) * var(--motion-scale))
+    cubic-bezier(0.2, 0.6, 0.4, 1) calc(var(--delay) * var(--motion-scale)) both;
 }
 
 /* A left accent bar growing into place. */
@@ -290,18 +332,26 @@ body {
 }
 .bar-grow {
   transform-origin: top;
-  animation: bar-grow 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: bar-grow calc(0.6s * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Match-clock progress ring. */
-@keyframes ring-sweep {
-  from { stroke-dashoffset: var(--ring-circumference); }
-  to { stroke-dashoffset: var(--ring-offset); }
+/* Slow drifting glow, used behind colour washes. */
+@keyframes glow-drift {
+  0%, 100% { transform: translate(-6%, -4%) scale(1); }
+  50% { transform: translate(6%, 4%) scale(1.12); }
 }
-.ring-sweep {
-  animation: ring-sweep 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+.glow-drift {
+  animation: glow-drift calc(14s * var(--motion-scale)) ease-in-out infinite;
 }
 
+/* The reveal control turns off the scroll entrance without touching the rest. */
+[data-reveal="off"] .rise-in {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+/* The reader's own setting always wins, whatever the sidebar says. */
 @media (prefers-reduced-motion: reduce) {
   .live-dot,
   .radio-wave,
@@ -309,26 +359,17 @@ body {
   .slide-from-left,
   .slide-from-right,
   .watermark-in,
-  .score-bloom,
-  .confetti-shard,
-  .marquee-track,
-  .perforation-shimmer,
-  .glow-drift,
   .bar-grow,
-  .ring-sweep {
+  .glow-drift {
     animation: none !important;
     opacity: 1;
     transform: none;
   }
   .watermark-in {
-    opacity: var(--watermark-opacity, 0.22);
+    opacity: var(--wm-opacity);
   }
   .confetti-shard,
   .score-bloom {
     display: none;
-  }
-  /* Keeps the digits on their final value instead of snapping back to zero. */
-  .odometer-track {
-    animation: none !important;
   }
 }

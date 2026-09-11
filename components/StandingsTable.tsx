@@ -74,16 +74,16 @@ export function StandingsTable({ entries }: { entries: StandingsEntry[] }) {
   }, [ranked, sort, split]);
 
   return (
-    <div className="rounded-card border border-line bg-surface shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-16px_rgba(16,24,40,0.24)]">
+    <div className="bc-card overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line p-3">
-        <div role="group" aria-label="Standings split" className="flex gap-1 rounded-full bg-ground p-1">
+        <div role="group" aria-label="Standings split" className="flex gap-1 rounded-control bg-ground p-1">
           {splits.map((option) => (
             <button
               key={option.value}
               type="button"
               onClick={() => setSplit(option.value)}
               aria-pressed={split === option.value}
-              className={`rounded-full px-4 py-1.5 text-[13px] font-semibold transition ${
+              className={`rounded-control px-4 py-1.5 text-[0.78rem] font-semibold transition ${
                 split === option.value
                   ? "bg-accent text-white shadow-sm"
                   : "text-ink-muted hover:text-ink"
@@ -94,12 +94,12 @@ export function StandingsTable({ entries }: { entries: StandingsEntry[] }) {
           ))}
         </div>
 
-        <label className="flex items-center gap-2 text-[13px] text-ink-muted">
+        <label className="flex items-center gap-2 text-[0.78rem] text-ink-muted">
           Sort by
           <select
             value={sort}
             onChange={(event) => setSort(event.target.value as SortKey)}
-            className="rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-semibold text-ink outline-none focus:border-accent"
+            className="rounded-control border border-line bg-surface px-3 py-1.5 text-[0.78rem] font-semibold text-ink outline-none focus:border-accent"
           >
             <option value="rank">Standing</option>
             {columns.map((column) => (
@@ -112,9 +112,9 @@ export function StandingsTable({ entries }: { entries: StandingsEntry[] }) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] border-collapse text-sm">
+        <table className="w-full min-w-[640px] border-collapse text-[0.85rem]">
           <thead>
-            <tr className="text-left text-[11px] font-semibold tracking-wide text-ink-faint uppercase">
+            <tr className="bc-label text-left text-[0.65rem] text-ink-faint">
               <th scope="col" className="w-10 py-2.5 pl-4 font-semibold">#</th>
               <th scope="col" className="py-2.5 font-semibold">Team</th>
               <th scope="col" className="px-2 py-2.5 text-center font-semibold" title="Games played">GP</th>
@@ -143,10 +143,10 @@ export function StandingsTable({ entries }: { entries: StandingsEntry[] }) {
 
               return (
                 <tr key={team.slug} className="border-t border-line/80 hover:bg-ground/60">
-                  <td className="py-3 pl-4 text-[13px] font-semibold text-ink-faint tabular-nums">
+                  <td className="bc-row pl-4 text-[0.78rem] font-semibold text-ink-faint tabular-nums">
                     {rank}
                   </td>
-                  <td className="py-3">
+                  <td className="bc-row">
                     <Link href={`/teams/${team.slug}`} className="flex items-center gap-2.5 group">
                       <TeamBadge team={team} size="sm" />
                       <span className="font-semibold text-ink group-hover:text-accent">
@@ -154,17 +154,17 @@ export function StandingsTable({ entries }: { entries: StandingsEntry[] }) {
                       </span>
                     </Link>
                   </td>
-                  <td className="px-2 py-3 text-center tabular-nums text-ink-muted">{gp}</td>
-                  <td className="px-2 py-3 text-center font-bold tabular-nums text-ink">{record.pts}</td>
-                  <td className="px-2 py-3 text-center tabular-nums text-ink-muted">{record.w}</td>
-                  <td className="px-2 py-3 text-center tabular-nums text-ink-muted">{record.l}</td>
-                  <td className="px-2 py-3 text-center tabular-nums text-ink-muted">{record.d}</td>
-                  <td className="px-2 py-3 text-center tabular-nums text-ink-muted">{record.gf}</td>
-                  <td className="px-2 py-3 text-center tabular-nums text-ink-muted">{record.ga}</td>
-                  <td className="px-2 py-3 text-center tabular-nums text-ink-muted">
+                  <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{gp}</td>
+                  <td className="bc-row px-2 text-center font-bold tabular-nums text-ink">{record.pts}</td>
+                  <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{record.w}</td>
+                  <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{record.l}</td>
+                  <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{record.d}</td>
+                  <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{record.gf}</td>
+                  <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{record.ga}</td>
+                  <td className="bc-row px-2 text-center tabular-nums text-ink-muted">
                     {gd > 0 ? `+${gd}` : gd}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="bc-row px-4">
                     <FormDots form={row.form} />
                   </td>
                 </tr>

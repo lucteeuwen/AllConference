@@ -44,7 +44,7 @@ export function TeamFilter({ options, selectedCount, clearHref }: Props) {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition ${
+        className={`flex items-center gap-1.5 rounded-control border px-3.5 py-1.5 text-[0.78rem] font-semibold transition ${
           selectedCount > 0
             ? "border-accent bg-accent-soft text-accent"
             : "border-line bg-surface text-ink-muted hover:text-ink"

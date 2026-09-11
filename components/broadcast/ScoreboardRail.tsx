@@ -32,7 +32,7 @@ export function ScoreboardRail({ tiles }: { tiles: RailTile[] }) {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-[13px] font-black tracking-[0.12em] text-ink uppercase">
+        <h2 className="bc-label flex items-center gap-2 text-[0.78rem] text-ink">
           <svg viewBox="0 0 24 24" className="size-4 text-accent" fill="currentColor">
             <path d="M13 2L4.5 13.5H11l-1 8.5 8.5-11.5H12z" />
           </svg>
@@ -61,13 +61,13 @@ export function ScoreboardRail({ tiles }: { tiles: RailTile[] }) {
         </div>
       </div>
 
-      <div ref={rail} className="no-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 md:mx-0 md:px-0">
+      <div ref={rail} className="no-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 py-1 md:mx-0 md:px-0">
         {tiles.map((tile, index) => (
           <Link
             key={tile.id}
             href={`/matches/${tile.id}`}
-            style={{ animationDelay: `${index * 55}ms` }}
-            className="rise-in w-[188px] shrink-0 rounded-xl border border-line bg-surface p-3 transition hover:border-accent/50"
+            style={{ animationDelay: `${index * 55}ms`, width: "var(--rail-tile)" }}
+            className="bc-card rise-in shrink-0 p-3 transition hover:border-accent/50"
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <span

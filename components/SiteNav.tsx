@@ -78,8 +78,8 @@ export function SiteNav() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 hidden border-b border-line bg-navy md:block">
-        <div className="mx-auto flex h-16 max-w-5xl items-center gap-8 px-6">
+      <header className="bc-sticky sticky top-0 z-40 hidden border-b border-line bg-navy md:block">
+        <div className="mx-auto flex h-16 items-center gap-8 px-6" style={{ maxWidth: "var(--page-max)" }}>
           <Link href="/" className="flex items-center gap-2.5">
             <LogoTile className="size-9" />
             <span className="text-[15px] font-bold tracking-tight text-white">

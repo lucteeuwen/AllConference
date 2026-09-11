@@ -33,7 +33,7 @@ function Pill({ active, children, target }: { active: boolean; children: string;
       href={target}
       scroll={false}
       aria-current={active ? "true" : undefined}
-      className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition ${
+      className={`rounded-control px-3.5 py-1.5 text-[0.78rem] font-semibold transition ${
         active ? "bg-accent text-white shadow-sm" : "text-ink-muted hover:text-ink"
       }`}
     >
@@ -62,7 +62,7 @@ export function MatchFilterBar({ filters, teams, shown, total }: Props) {
 
   return (
     <div className="mb-5 flex flex-wrap items-center gap-2">
-      <div className="flex gap-1 rounded-full bg-ground p-1 ring-1 ring-line">
+      <div className="flex gap-1 rounded-control bg-ground p-1 ring-1 ring-line">
         {statuses.map((option) => (
           <Pill
             key={option.value}
@@ -74,7 +74,7 @@ export function MatchFilterBar({ filters, teams, shown, total }: Props) {
         ))}
       </div>
 
-      <div className="flex gap-1 rounded-full bg-ground p-1 ring-1 ring-line">
+      <div className="flex gap-1 rounded-control bg-ground p-1 ring-1 ring-line">
         {competitions.map((option) => (
           <Pill
             key={option.value}
@@ -92,7 +92,7 @@ export function MatchFilterBar({ filters, teams, shown, total }: Props) {
         clearHref={href({ ...filters, teamSlugs: [] })}
       />
 
-      <span className="ml-auto flex items-center gap-3 text-[13px] text-ink-muted">
+      <span className="ml-auto flex items-center gap-3 text-[0.78rem] text-ink-muted">
         <span className="tabular-nums">
           {shown} of {total} matches
         </span>
@@ -100,7 +100,7 @@ export function MatchFilterBar({ filters, teams, shown, total }: Props) {
           <Link
             href={BASE}
             scroll={false}
-            className="rounded-full border border-line px-3 py-1.5 text-[13px] font-semibold text-accent transition hover:border-accent"
+            className="rounded-control border border-line px-3 py-1.5 text-[0.78rem] font-semibold text-accent transition hover:border-accent"
           >
             Clear all
           </Link>
