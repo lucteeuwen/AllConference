@@ -7,7 +7,16 @@ import type { Match } from "@/lib/types";
  * The half-by-half table and points donut that sit in the card lapping over a
  * matchup hero, mirroring the reference video's boxscore panel.
  */
-export function Boxscore({ match, standings }: { match: Match; standings: HomeData["standings"] }) {
+export function Boxscore({
+  match,
+  standings,
+  showHeading = true,
+}: {
+  match: Match;
+  standings: HomeData["standings"];
+  /** The home page's collapsible header already carries this label. */
+  showHeading?: boolean;
+}) {
   const halves = (["home", "away"] as const).map((side) => {
     const slug = match[side].teamSlug;
     const goals = match.events.filter(
@@ -34,7 +43,9 @@ export function Boxscore({ match, standings }: { match: Match; standings: HomeDa
   return (
     <div className={`grid gap-5 ${comparable ? "md:grid-cols-[1fr_auto] md:gap-8" : ""}`}>
       <div>
-        <h3 className="bc-label mb-3 text-[0.7rem] text-ink-faint">Boxscore</h3>
+        {showHeading ? (
+          <h3 className="bc-label mb-3 text-[0.7rem] text-ink-faint">Boxscore</h3>
+        ) : null}
         <table className="w-full text-[0.85rem]">
           <thead>
             <tr className="bc-label text-[0.65rem] text-ink-faint">

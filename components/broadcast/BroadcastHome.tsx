@@ -3,6 +3,7 @@ import { Lockup, SectionHeader } from "@/components/broadcast/Lockup";
 import { WashHero } from "@/components/broadcast/WashHero";
 import { OverlapCard } from "@/components/broadcast/OverlapCard";
 import { Boxscore } from "@/components/broadcast/Boxscore";
+import { Collapsible } from "@/components/broadcast/Collapsible";
 import { ScoreboardRail } from "@/components/broadcast/ScoreboardRail";
 import { ScorersSnippet, StandingsSnippet } from "@/components/broadcast/StandingsSnippet";
 import { Reveal } from "@/components/broadcast/Reveal";
@@ -98,7 +99,9 @@ export function BroadcastHome({ data }: { data: HomeData }) {
           </WashHero>
 
           <OverlapCard>
-            <Boxscore match={featured} standings={data.standings} />
+            <Collapsible title="Boxscore" storageKey="boxscore-open">
+              <Boxscore match={featured} standings={data.standings} showHeading={false} />
+            </Collapsible>
           </OverlapCard>
         </section>
       ) : null}

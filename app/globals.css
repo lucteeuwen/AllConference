@@ -344,6 +344,31 @@ body {
   animation: glow-drift calc(14s * var(--motion-scale)) ease-in-out infinite;
 }
 
+/*
+ * Disclosure open/close. The grid-template-rows 0fr/1fr trick animates to the
+ * content's intrinsic height without ever measuring it in JS, so it keeps
+ * working whatever the content turns out to be.
+ */
+.bc-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows calc(0.4s * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bc-collapse.is-open {
+  grid-template-rows: 1fr;
+}
+.bc-collapse > * {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.bc-collapse-chevron {
+  transition: transform calc(0.35s * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bc-collapse-chevron.is-open {
+  transform: rotate(90deg);
+}
+
 /* The reveal control turns off the scroll entrance without touching the rest. */
 [data-reveal="off"] .rise-in {
   animation: none;
@@ -371,5 +396,9 @@ body {
   .confetti-shard,
   .score-bloom {
     display: none;
+  }
+  .bc-collapse,
+  .bc-collapse-chevron {
+    transition: none !important;
   }
 }
