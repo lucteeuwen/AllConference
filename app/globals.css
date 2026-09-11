@@ -116,7 +116,7 @@
  * the design sidebar.
  * ------------------------------------------------------------------------ */
 :root {
-  --card-radius: 16px;
+  --card-radius: 5px;
   --control-radius: 999px;
   --border-width: 1px;
   --shadow-strength: 1;
@@ -125,7 +125,7 @@
   --section-gap: 2rem;
   --badge-radius: 50%;
 
-  --font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-scale: 1;
   --heading-weight: 900;
   --label-tracking: 0.12em;
