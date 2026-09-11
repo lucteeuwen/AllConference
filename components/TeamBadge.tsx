@@ -26,7 +26,7 @@ export function TeamBadge({ team, size = "md", ring = false }: Props) {
   return (
     <span
       aria-hidden="true"
-      className="inline-flex shrink-0 items-center justify-center rounded-full font-bold tracking-tight"
+      className="team-color inline-flex shrink-0 items-center justify-center rounded-full font-bold tracking-tight"
       style={{
         width: box,
         height: box,

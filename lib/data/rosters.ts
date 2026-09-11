@@ -76,8 +76,9 @@ function buildRoster(teamSlug: string): Player[] {
     const gp = rng.int(4, 14);
 
     const scoringWeight = position === "F" ? 1 : position === "M" ? 0.55 : position === "D" ? 0.15 : 0;
-    const goals = Math.round(rng.int(0, 9) * scoringWeight);
-    const assists = Math.round(rng.int(0, 7) * (scoringWeight * 0.8 + 0.1));
+    // A wide range keeps the leaderboard from collapsing into identical lines.
+    const goals = Math.round(rng.int(0, 14) * scoringWeight);
+    const assists = Math.round(rng.int(0, 11) * (scoringWeight * 0.8 + 0.1));
 
     return {
       id: `${teamSlug}-${index + 1}`,

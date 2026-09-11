@@ -155,25 +155,39 @@ function buildMatch(
   const homeScore = played ? drawGoals(status === "live" ? rng.next() * 0.8 : rng.next()) : null;
   const awayScore = played ? drawGoals(status === "live" ? rng.next() * 0.8 : rng.next()) : null;
 
-  const events =
+  const allEvents =
     played && homeScore !== null && awayScore !== null
       ? buildEvents(id, homeSlug, awaySlug, homeScore, awayScore)
       : [];
 
   const liveMinute = status === "live" ? rng.int(28, 72) : undefined;
 
+  // A match in progress only shows what has happened so far, so the score has
+  // to be counted back off those events rather than taken from the full-time
+  // figure. Otherwise the timeline and the boxscore contradict the scoreline.
+  const events =
+    status === "live" ? allEvents.filter((event) => event.minute <= (liveMinute ?? 0)) : allEvents;
+
+  const goalsFor = (slug: string) =>
+    events.filter(
+      (event) => event.teamSlug === slug && (event.type === "goal" || event.type === "penalty"),
+    ).length;
+
+  const shownHome = status === "live" ? goalsFor(homeSlug) : homeScore;
+  const shownAway = status === "live" ? goalsFor(awaySlug) : awayScore;
+
   return {
     id,
     date,
     status,
     minute: liveMinute,
-    home: { teamSlug: homeSlug, score: homeScore },
-    away: { teamSlug: awaySlug, score: awayScore },
+    home: { teamSlug: homeSlug, score: shownHome },
+    away: { teamSlug: awaySlug, score: shownAway },
     venue: teamBySlug[homeSlug].venue,
     isConference,
     attendance: status === "final" ? rng.int(240, 1450) : undefined,
     referee: rng.pick(REFEREES),
-    events: status === "live" ? events.filter((event) => event.minute <= (liveMinute ?? 0)) : events,
+    events,
     lineups: played
       ? { home: buildLineup(homeSlug, id), away: buildLineup(awaySlug, id) }
       : undefined,

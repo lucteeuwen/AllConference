@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Design reference material. The stills are kept; the 20MB screen recording and
+# the WSL zone-metadata files are not worth carrying in every clone.
+design_inspiration/*.mp4
+*:Zone.Identifier

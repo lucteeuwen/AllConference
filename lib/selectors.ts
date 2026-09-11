@@ -57,6 +57,35 @@ export function getPlayer(id: string): Player | undefined {
   return playersById[id];
 }
 
+export type ScorerLine = {
+  player: Player;
+  team: Team;
+  points: number;
+};
+
+/**
+ * Conference scoring leaders. Points follow the NCAA convention of two for a
+ * goal and one for an assist, which is how college soccer ranks its leaders.
+ */
+export function getTopScorers(limit = 5): ScorerLine[] {
+  return teams
+    .flatMap((team) =>
+      (rosters[team.slug] ?? []).map((player) => ({
+        player,
+        team,
+        points: player.stats.goals * 2 + player.stats.assists,
+      })),
+    )
+    .filter((line) => line.points > 0)
+    .sort(
+      (a, b) =>
+        b.points - a.points ||
+        b.player.stats.goals - a.player.stats.goals ||
+        a.player.name.localeCompare(b.player.name),
+    )
+    .slice(0, limit);
+}
+
 export function matchesForTeam(slug: string): Match[] {
   return matches.filter(
     (match) => match.home.teamSlug === slug || match.away.teamSlug === slug,

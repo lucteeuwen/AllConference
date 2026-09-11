@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LogoTile } from "@/components/Logo";
 import type { ReactNode } from "react";
 
 type NavItem = {
@@ -19,6 +20,17 @@ const stroke = {
 } as const;
 
 const items: NavItem[] = [
+  {
+    href: "/",
+    label: "Home",
+    icon: (
+      <svg viewBox="0 0 24 24" className="size-5" {...stroke}>
+        <path d="M4 10.5L12 4l8 6.5" />
+        <path d="M6 9.8V20h12V9.8" />
+        <path d="M10 20v-5h4v5" />
+      </svg>
+    ),
+  },
   {
     href: "/matches",
     label: "Matches",
@@ -56,6 +68,7 @@ const items: NavItem[] = [
 ];
 
 function isActive(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -67,10 +80,8 @@ export function SiteNav() {
     <>
       <header className="sticky top-0 z-40 hidden border-b border-line bg-navy md:block">
         <div className="mx-auto flex h-16 max-w-5xl items-center gap-8 px-6">
-          <Link href="/matches" className="flex items-center gap-2.5">
-            <span className="flex size-8 items-center justify-center rounded-md bg-accent text-[13px] font-black text-white">
-              CC
-            </span>
+          <Link href="/" className="flex items-center gap-2.5">
+            <LogoTile className="size-9" />
             <span className="text-[15px] font-bold tracking-tight text-white">
               CCIW Men&apos;s Soccer
             </span>
