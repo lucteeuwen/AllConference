@@ -1,58 +1,120 @@
 # CCIW Men's Soccer
 
-Front end for an NCAA Division III College Conference of Illinois and Wisconsin
-men's soccer site: results, fixtures, standings and rosters.
+Results, fixtures, standings, the CCIW Tournament bracket and rosters for NCAA
+Division III College Conference of Illinois and Wisconsin men's soccer.
 
-The backend scraper does not exist yet. Every page reads generated fixture data
-shaped exactly like the scraper's eventual output, so wiring up real data is a
-change to `lib/data/` and nothing else.
+```
+SIDEARM sites ──▶ scraper (GitHub Actions) ──▶ Supabase ──▶ Next.js site
+```
+
+## Where the data comes from
+
+All nine CCIW schools (and cciw.org) run their athletics sites on SIDEARM
+Sports. The scraper in `scraper/` reads, for each school:
+
+| Source | What it gives |
+| --- | --- |
+| `/services/adaptive_components.ashx?type=scoreboard&sport_id=…` | The season schedule as JSON: kickoff, home/away, score, tournament, box score link, stream link |
+| `/boxscore.aspx?id=…` | Goals and assists, cards, starting lineups, attendance, referee, stadium |
+| `/sports/mens-soccer/roster/<season>?view=2` | Roster: number, position, class year, height, hometown |
+| `/sports/mens-soccer/stats/<season>` | Season stats: games played and started, goals, assists |
+
+A conference game appears in both schools' feeds; the two are merged into one
+match, and the host's record wins for kickoff, score, box score and stream.
+
+The scraper is polite on purpose: one request per second per site, a
+descriptive User-Agent, box scores fetched once per game, rosters once a day.
+
+### Tournament bracket
+
+The CCIW Tournament is a six-team knockout. Seeds 1–6 come from the regular
+season table, #3 v #6 and #4 v #5 play the quarterfinals, and #1 and #2 host the
+semifinals. The schools publish placeholder games ("CCIW Tournament
+Semifinal") before the field is set; those become **TBC** matches that fill in
+as results arrive.
+
+Seeds are projected from the live table until both real quarterfinals are
+known. If the conference's tiebreakers ever disagree with the projection, set
+the six rows in `bracket_seeds` by hand with `is_official = true` and the
+scraper will use them.
+
+### Video
+
+Most home games stream on the CCIW Network (Hudl TV, subscription), some on
+YouTube or FloCollege. The match page embeds a specific YouTube video and links
+to everything else.
+
+### Logos
+
+Team logos are taken from the SIDEARM feeds, copied once into the public
+`team-logos` Storage bucket, and re-downloaded only when a school changes its
+logo. **Logos belong to their institutions; ask the schools for permission
+before a public launch.** Teams without a logo get a coloured initials badge.
+
+## Setup
 
 ```bash
+npm install
+cp .env.example .env.local   # fill in the Supabase URL and keys
+npx supabase login
+npx supabase link --project-ref <ref>
+npm run db:push              # applies supabase/migrations
+npm run scrape -- --rosters  # first full import
 npm run dev
 ```
+
+## Scripts
+
+| Command | What it does |
+| --- | --- |
+| `npm run scrape` | One scrape pass; stays up to 13 min polling every 2 min if a match is on |
+| `npm run scrape -- --rosters` | Also refreshes rosters and season stats |
+| `npm run scrape -- --dry-run [--json]` | Reads the feeds and prints what would be written |
+| `npm run scrape -- --no-live` | Skips live mode |
+| `npm test` | Parser tests against saved SIDEARM pages in `scraper/__tests__/fixtures` |
+| `npm run db:push` | Applies new migrations to the linked Supabase project |
+
+`.github/workflows/scrape.yml` runs the scraper every 15 minutes from August
+to November, and with `--rosters` once a day. It needs the repository secrets
+`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+
+## Database
+
+`supabase/migrations` holds the schema and the conference seed data (teams,
+aliases, SIDEARM URLs, bracket layout). The site reads with the anon key, and
+row-level security only allows `select`; the scraper writes with the service
+role key.
+
+| Table | Holds |
+| --- | --- |
+| `teams` | Conference members and every opponent seen in a feed |
+| `matches` | One row per game, tournament TBC slots included |
+| `match_events`, `match_lineups` | Box score timeline and lineups |
+| `players` | Rosters with season stats |
+| `bracket_seeds`, `bracket_slots` | Tournament seeding and layout |
+| `scrape_runs` | A log line per scraper run |
 
 ## Routes
 
 | Route | What it shows |
 | --- | --- |
-| `/matches` | Date rail, filters, matches grouped by day, live hero card. `/` redirects here. |
-| `/matches/[id]` | Score header with Details, Lineups and Standings tabs. |
-| `/standings` | Conference table with All / Home / Away splits and column sorting. |
-| `/teams` | The nine conference members with their conference record. |
-| `/teams/[slug]` | Team header, season record, Roster and Schedule tabs. |
+| `/` | Match box (15 min before kickoff until 15 min after full time), scoreboard, table, leaders, fixtures |
+| `/matches` | Date rail, filters, matches grouped by day |
+| `/matches/[id]` | Score header, video, details, timeline, lineups, standings |
+| `/standings` | Conference table, tournament bracket, scoring leaders |
+| `/teams` | The nine conference members with their conference record |
+| `/teams/[slug]` | Team header, season record, roster and schedule |
 
-Filter and tab state lives in the URL, so every view is linkable and survives a
-reload.
-
-## Replacing the dummy data
-
-`lib/types.ts` is the contract. The scraper needs to produce three collections:
-
-- `Team[]` — one entry per school, including the colour used for its badge.
-- `Match[]` — kickoff as an ISO instant, status, both sides' scores, plus
-  optional events and lineups.
-- `Player[]` — rosters keyed by team.
-
-Then swap the three modules in `lib/data/` for real fetches. `lib/selectors.ts`
-is the only read path the pages use, and `computeStandings` there derives the
-table from finished matches rather than storing it, so the table stays
-consistent with whatever fixtures the scraper returns.
-
-Two things to undo when real data arrives:
-
-- `lib/data/season.ts` builds kickoff times relative to today so the demo always
-  has results behind it and fixtures ahead.
-- `/standings` and `/teams` set `dynamic = "force-dynamic"` for the same reason.
+`lib/season-data.ts` is the only module that talks to Supabase; reads are
+cached for 60 seconds. `lib/selectors.ts` derives everything else, and
+`lib/standings.ts` computes the table from finished matches (shared with the
+scraper, which uses it to project seeds).
 
 ## Design
 
 NCAA navy (`--color-navy`) carries the headers, with indigo (`--color-accent`)
 for buttons, active tabs and the live card. Tokens are defined once in
 `app/globals.css` under Tailwind's `@theme`.
-
-School crests are licensed assets, so `TeamBadge` draws a coloured circle with
-the school's abbreviation instead. Team colours in `lib/data/teams.ts` are
-placeholders and should be checked against each school's athletics site.
 
 Layout is mobile first: a fixed bottom tab bar on phones that becomes a top bar
 from the `md` breakpoint up.

@@ -1,0 +1,42 @@
+name: Scrape CCIW data
+
+on:
+  schedule:
+    # Every 15 minutes during the season (Aug–Nov). When a match is on, the
+    # run stays up and polls the host school every 2 minutes (live mode).
+    - cron: "*/15 * * 8-11 *"
+    # Rosters and season stats once a day, 5 AM Central.
+    - cron: "0 10 * 8-11 *"
+  workflow_dispatch:
+    inputs:
+      rosters:
+        description: "Also refresh rosters and season stats"
+        type: boolean
+        default: false
+
+# Never run two scrapes at once; a new trigger waits for the current one.
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Scrape
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ "${{ github.event.schedule }}" = "0 10 * 8-11 *" ] || [ "${{ inputs.rosters }}" = "true" ]; then
+            npm run scrape -- --rosters
+          else
+            npm run scrape
+          fi

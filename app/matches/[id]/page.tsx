@@ -4,21 +4,24 @@ import { notFound } from "next/navigation";
 import { WashHero } from "@/components/broadcast/WashHero";
 import { OverlapCard } from "@/components/broadcast/OverlapCard";
 import { Boxscore } from "@/components/broadcast/Boxscore";
+import { sideName } from "@/components/broadcast/MatchRow";
 import { StandingsSnippet } from "@/components/broadcast/StandingsSnippet";
+import { MatchVideo } from "@/components/MatchVideo";
 import { TeamBadge } from "@/components/TeamBadge";
 import { Tabs } from "@/components/Tabs";
 import { formatFullDate, formatKickoff } from "@/lib/format";
-import { computeStandings, getMatch, getPlayer, requireTeam } from "@/lib/selectors";
-import type { Match, MatchEvent } from "@/lib/types";
+import { getSeasonData, withDetails } from "@/lib/season-data";
+import { competitionLabel, getMatch, standingsLines } from "@/lib/selectors";
+import type { Lineup, Match, MatchEvent, MatchSide } from "@/lib/types";
 
 type Props = PageProps<"/matches/[id]">;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const match = getMatch(id);
+  const match = getMatch(await getSeasonData(), id);
   if (!match) return { title: "Match not found" };
   return {
-    title: `${requireTeam(match.home.teamSlug).name} vs ${requireTeam(match.away.teamSlug).name}`,
+    title: `${sideName(match.home)} vs ${sideName(match.away)}`,
   };
 }
 
@@ -27,6 +30,7 @@ const statusCopy: Record<Match["status"], string> = {
   live: "In progress",
   final: "Full time",
   postponed: "Postponed",
+  canceled: "Canceled",
 };
 
 /**
@@ -52,13 +56,12 @@ function EventIcon({ type }: { type: MatchEvent["type"] }) {
 }
 
 function eventLabel(event: MatchEvent): string {
-  const player = getPlayer(event.playerId)?.name ?? "Unknown";
+  const player = event.playerName;
   if (event.type === "yellow") return `${player} booked`;
   if (event.type === "red") return `${player} sent off`;
   if (event.type === "penalty") return `${player} (pen.)`;
-  if (event.type === "own-goal") return `${player} (o.g.)`;
-  const assist = event.assistPlayerId ? getPlayer(event.assistPlayerId)?.name : undefined;
-  return assist ? `${player}, assist ${assist}` : player;
+  if (event.type === "own-goal") return "Own goal";
+  return event.assistName ? `${player}, assist ${event.assistName}` : player;
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -70,70 +73,75 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function LineupColumn({
-  slug,
-  lineup,
-}: {
-  slug: string;
-  lineup: { starters: string[]; subs: string[] };
-}) {
-  const team = requireTeam(slug);
-
+function LineupColumn({ side, lineup }: { side: MatchSide; lineup: Lineup }) {
   return (
     <div>
       <div className="mb-3 flex items-center gap-2.5">
-        <TeamBadge team={team} size="sm" />
-        <span className="text-[0.85rem] font-bold text-ink">{team.name}</span>
+        <TeamBadge team={side.team} size="sm" />
+        <span className="text-[0.85rem] font-bold text-ink">{sideName(side)}</span>
       </div>
       <p className="bc-label mb-2 text-[0.65rem] text-ink-faint">Starting XI</p>
       <ul className="space-y-1.5">
-        {lineup.starters.map((id) => {
-          const player = getPlayer(id);
-          if (!player) return null;
-          return (
-            <li key={id} className="flex items-center gap-2.5 text-[0.78rem]">
-              <span className="w-6 shrink-0 text-right font-bold text-ink-faint tabular-nums">
-                {player.number}
-              </span>
-              <span className="truncate font-medium text-ink">{player.name}</span>
-              <span className="ml-auto shrink-0 text-[0.68rem] font-semibold text-ink-faint">
-                {player.position}
-              </span>
-            </li>
-          );
-        })}
+        {lineup.starters.map((player, index) => (
+          <li key={index} className="flex items-center gap-2.5 text-[0.78rem]">
+            <span className="w-6 shrink-0 text-right font-bold text-ink-faint tabular-nums">
+              {player.number ?? ""}
+            </span>
+            <span className="truncate font-medium text-ink">{player.name}</span>
+            <span className="ml-auto shrink-0 text-[0.68rem] font-semibold text-ink-faint">
+              {player.position ?? ""}
+            </span>
+          </li>
+        ))}
       </ul>
-      <p className="bc-label mt-4 mb-2 text-[0.65rem] text-ink-faint">Substitutes</p>
-      <ul className="space-y-1.5">
-        {lineup.subs.map((id) => {
-          const player = getPlayer(id);
-          if (!player) return null;
-          return (
-            <li key={id} className="flex items-center gap-2.5 text-[0.78rem] text-ink-muted">
-              <span className="w-6 shrink-0 text-right font-bold text-ink-faint tabular-nums">
-                {player.number}
-              </span>
-              <span className="truncate">{player.name}</span>
-            </li>
-          );
-        })}
-      </ul>
+      {lineup.subs.length > 0 ? (
+        <>
+          <p className="bc-label mt-4 mb-2 text-[0.65rem] text-ink-faint">Substitutes</p>
+          <ul className="space-y-1.5">
+            {lineup.subs.map((player, index) => (
+              <li key={index} className="flex items-center gap-2.5 text-[0.78rem] text-ink-muted">
+                <span className="w-6 shrink-0 text-right font-bold text-ink-faint tabular-nums">
+                  {player.number ?? ""}
+                </span>
+                <span className="truncate">{player.name}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
     </div>
+  );
+}
+
+function ExternalLink({ href, children }: { href: string; children: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="bc-label inline-flex rounded-control border border-line px-3 py-2 text-[0.68rem] text-ink-muted transition hover:border-accent hover:text-accent"
+    >
+      {children}
+      <span className="sr-only"> (opens in a new tab)</span>
+    </a>
   );
 }
 
 export default async function MatchPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const match = getMatch(id);
-  if (!match) notFound();
+  const data = await getSeasonData();
+  const base = getMatch(data, id);
+  if (!base) notFound();
+  const match = await withDetails(base);
 
   const query = await searchParams;
   const requested = Array.isArray(query.tab) ? query.tab[0] : query.tab;
 
-  const home = requireTeam(match.home.teamSlug);
-  const away = requireTeam(match.away.teamSlug);
+  const home = match.home.team;
+  const away = match.away.team;
   const live = match.status === "live";
   const hasScore = match.home.score !== null && match.away.score !== null;
+  const shootout = hasScore && match.home.pens != null && match.away.pens != null;
 
   const tabs = [
     { key: "details", label: "Details", href: `/matches/${match.id}?tab=details` },
@@ -144,11 +152,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
   ];
   const active = tabs.some((tab) => tab.key === requested) ? (requested as string) : "details";
 
-  const standings = computeStandings().map((row, index) => ({
-    row,
-    team: requireTeam(row.teamSlug),
-    rank: index + 1,
-  }));
+  const standings = standingsLines(data);
 
   return (
     <div className="bc-stack pt-4 md:pt-6">
@@ -165,18 +169,20 @@ export default async function MatchPage({ params, searchParams }: Props) {
               </svg>
             </Link>
             <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
-              {match.isConference ? "CCIW Conference" : "Non-conference"}
+              {competitionLabel(match, true)}
             </span>
           </div>
 
           <p className="bc-label text-[0.8rem] text-white/70 md:text-[0.92rem]">
-            {home.name} <span className="text-white/35">@</span> {away.name}
+            {sideName(match.home)} <span className="text-white/35">@</span> {sideName(match.away)}
           </p>
 
           <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-start gap-3">
             <div className="slide-from-left flex flex-col items-center gap-2.5">
               <TeamBadge team={home} size="xl" ring />
-              <span className="text-center text-[0.78rem] font-semibold text-white">{home.name}</span>
+              <span className="text-center text-[0.78rem] font-semibold text-white">
+                {sideName(match.home)}
+              </span>
               <span className="text-[0.68rem] text-white/50">Home</span>
             </div>
 
@@ -196,18 +202,25 @@ export default async function MatchPage({ params, searchParams }: Props) {
                     <span className="mx-2 text-white/30">-</span>
                     {match.away.score}
                   </div>
+                  {shootout ? (
+                    <p className="text-[0.72rem] font-bold text-white/70 tabular-nums">
+                      {match.home.pens}–{match.away.pens} on penalties
+                    </p>
+                  ) : null}
                 </>
               ) : (
                 <div className="text-2xl font-black text-white">{formatKickoff(match.date)}</div>
               )}
               <p className="bc-label mt-1.5 text-[0.64rem] text-white/60">
-                {live ? `${match.minute}' · In progress` : statusCopy[match.status]}
+                {live ? (match.minute ? `${match.minute}' · In progress` : "In progress") : statusCopy[match.status]}
               </p>
             </div>
 
             <div className="slide-from-right flex flex-col items-center gap-2.5">
               <TeamBadge team={away} size="xl" ring />
-              <span className="text-center text-[0.78rem] font-semibold text-white">{away.name}</span>
+              <span className="text-center text-[0.78rem] font-semibold text-white">
+                {sideName(match.away)}
+              </span>
               <span className="text-[0.68rem] text-white/50">Away</span>
             </div>
           </div>
@@ -219,11 +232,8 @@ export default async function MatchPage({ params, searchParams }: Props) {
           ) : (
             <div className="grid gap-3 sm:grid-cols-3">
               <DetailRow label="Kickoff" value={formatKickoff(match.date)} />
-              <DetailRow label="Venue" value={match.venue} />
-              <DetailRow
-                label="Competition"
-                value={match.isConference ? "CCIW" : "Non-conference"}
-              />
+              <DetailRow label="Venue" value={match.venue || "TBA"} />
+              <DetailRow label="Competition" value={competitionLabel(match)} />
             </div>
           )}
         </OverlapCard>
@@ -236,17 +246,29 @@ export default async function MatchPage({ params, searchParams }: Props) {
 
         {active === "details" ? (
           <div className="grid gap-4 lg:grid-cols-2">
+            {match.video ? (
+              <div className="bc-card bc-pad bc-shadow lg:col-span-2">
+                <h2 className="bc-label mb-3 text-[0.7rem] text-ink-faint">
+                  {match.status === "final" ? "Watch the replay" : "Watch"}
+                </h2>
+                <MatchVideo video={match.video} live={live} />
+              </div>
+            ) : null}
+
             <div className="bc-card bc-pad bc-shadow">
               <h2 className="bc-label mb-2 text-[0.7rem] text-ink-faint">Match facts</h2>
               <DetailRow label="Kickoff" value={formatFullDate(match.date)} />
-              <DetailRow label="Venue" value={match.venue} />
-              <DetailRow
-                label="Competition"
-                value={match.isConference ? "CCIW Conference" : "Non-conference"}
-              />
+              <DetailRow label="Venue" value={match.venue || "TBA"} />
+              <DetailRow label="Competition" value={competitionLabel(match, true)} />
               {match.referee ? <DetailRow label="Referee" value={match.referee} /> : null}
               {match.attendance ? (
                 <DetailRow label="Attendance" value={match.attendance.toLocaleString("en-US")} />
+              ) : null}
+              {match.boxscoreUrl || match.recapUrl ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {match.boxscoreUrl ? <ExternalLink href={match.boxscoreUrl}>Official box score</ExternalLink> : null}
+                  {match.recapUrl ? <ExternalLink href={match.recapUrl}>Match recap</ExternalLink> : null}
+                </div>
               ) : null}
             </div>
 
@@ -256,7 +278,9 @@ export default async function MatchPage({ params, searchParams }: Props) {
                 <p className="py-4 text-center text-[0.82rem] text-ink-muted">
                   {match.status === "scheduled"
                     ? "Events appear here once the match kicks off."
-                    : "No goals or cards recorded."}
+                    : match.status === "final" && !(match.home.score === 0 && match.away.score === 0)
+                      ? "The timeline appears once the box score is published."
+                      : "No goals or cards recorded."}
                 </p>
               ) : (
                 <ol className="space-y-2.5">
@@ -286,8 +310,8 @@ export default async function MatchPage({ params, searchParams }: Props) {
         {active === "lineups" && match.lineups ? (
           <div className="bc-card bc-pad bc-shadow">
             <div className="grid gap-8 md:grid-cols-2">
-              <LineupColumn slug={match.home.teamSlug} lineup={match.lineups.home} />
-              <LineupColumn slug={match.away.teamSlug} lineup={match.lineups.away} />
+              <LineupColumn side={match.home} lineup={match.lineups.home} />
+              <LineupColumn side={match.away} lineup={match.lineups.away} />
             </div>
           </div>
         ) : null}

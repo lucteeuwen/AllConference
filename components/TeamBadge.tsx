@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { readableInk } from "@/lib/color";
 import type { Team } from "@/lib/types";
 
@@ -17,26 +18,48 @@ type Props = {
 };
 
 /**
- * Stands in for a school crest. Real logos are licensed assets, so the dummy
- * data uses the school's colour plus its abbreviation instead.
+ * The school's logo on a white chip, so dark crests stay legible on the navy
+ * hero and in dark mode. Teams without a logo (and TBC sides) fall back to a
+ * coloured circle with the school's abbreviation.
  */
 export function TeamBadge({ team, size = "md", ring = false }: Props) {
   const { box, text } = sizes[size];
+  const frame = {
+    width: box,
+    height: box,
+    borderRadius: "var(--badge-radius)",
+    boxShadow: ring ? "0 0 0 2px rgba(255,255,255,0.55)" : "inset 0 0 0 1px rgba(0,0,0,0.08)",
+  };
+
+  if (team.logoUrl) {
+    const inset = Math.max(2, Math.round(box * 0.1));
+    return (
+      <span
+        aria-hidden="true"
+        className="inline-flex shrink-0 items-center justify-center overflow-hidden bg-white"
+        style={{ ...frame, padding: inset }}
+      >
+        <Image
+          src={team.logoUrl}
+          alt=""
+          width={box - inset * 2}
+          height={box - inset * 2}
+          className="size-full object-contain"
+          unoptimized={team.logoUrl.split("?")[0].endsWith(".svg")}
+        />
+      </span>
+    );
+  }
 
   return (
     <span
       aria-hidden="true"
       className="team-color inline-flex shrink-0 items-center justify-center font-bold tracking-tight"
       style={{
-        width: box,
-        height: box,
-        borderRadius: "var(--badge-radius)",
+        ...frame,
         background: team.primary,
         color: readableInk(team.primary),
         fontSize: text,
-        boxShadow: ring
-          ? "0 0 0 2px rgba(255,255,255,0.55)"
-          : "inset 0 0 0 1px rgba(0,0,0,0.08)",
       }}
     >
       {team.abbr}

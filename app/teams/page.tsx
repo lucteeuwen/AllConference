@@ -3,19 +3,20 @@ import Link from "next/link";
 import { Lockup } from "@/components/broadcast/Lockup";
 import { TeamBadge } from "@/components/TeamBadge";
 import { FormDots } from "@/components/FormDots";
-import { SEASON_LABEL } from "@/lib/data/season";
-import { computeStandings, getConferenceTeams, played } from "@/lib/selectors";
+import { SEASON_LABEL } from "@/lib/season";
+import { getSeasonData } from "@/lib/season-data";
+import { computeStandings, played } from "@/lib/selectors";
 
 export const metadata: Metadata = {
   title: "Teams",
 };
 
-/** The dummy schedule is generated relative to today, so this cannot be frozen. */
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
-export default function TeamsPage() {
-  const records = new Map(computeStandings().map((row) => [row.teamSlug, row]));
-  const teams = getConferenceTeams();
+export default async function TeamsPage() {
+  const data = await getSeasonData();
+  const records = new Map(computeStandings(data).map((row) => [row.teamSlug, row]));
+  const teams = data.conference;
 
   return (
     <div className="bc-stack">

@@ -10,38 +10,38 @@ import { Tabs } from "@/components/Tabs";
 import { TeamBadge } from "@/components/TeamBadge";
 import { FormDots } from "@/components/FormDots";
 import { buildRailTiles } from "@/lib/rail";
-import { conferenceSlugs } from "@/lib/data/teams";
-import { SEASON_LABEL } from "@/lib/data/season";
+import { SEASON_LABEL } from "@/lib/season";
+import { getSeasonData } from "@/lib/season-data";
 import {
-  computeStandings,
   getRoster,
   getTeam,
   goalDifference,
   matchesForTeam,
   played,
-  requireTeam,
+  standingsLines,
 } from "@/lib/selectors";
 import type { Player } from "@/lib/types";
 
 type Props = PageProps<"/teams/[slug]">;
 
-export function generateStaticParams() {
-  return [...conferenceSlugs].map((slug) => ({ slug }));
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const team = getTeam(slug);
+  const team = getTeam(await getSeasonData(), slug);
   return { title: team ? team.fullName : "Team not found" };
 }
 
-const positionOrder: Player["position"][] = ["GK", "D", "M", "F"];
-const positionLabels: Record<Player["position"], string> = {
-  GK: "Goalkeepers",
-  D: "Defenders",
-  M: "Midfielders",
-  F: "Forwards",
-};
+// Some schools leave positions blank; those players are listed last.
+const positionOrder: Player["position"][] = ["GK", "D", "M", "F", null];
+const positionLabel = (position: Player["position"]) =>
+  position === "GK"
+    ? "Goalkeepers"
+    : position === "D"
+      ? "Defenders"
+      : position === "M"
+        ? "Midfielders"
+        : position === "F"
+          ? "Forwards"
+          : "Squad";
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
@@ -54,25 +54,22 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 export default async function TeamPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const team = getTeam(slug);
-  if (!team || !conferenceSlugs.has(slug)) notFound();
+  const data = await getSeasonData();
+  const team = getTeam(data, slug);
+  if (!team || !team.isConference) notFound();
 
   const query = await searchParams;
   const requested = Array.isArray(query.tab) ? query.tab[0] : query.tab;
   const active = requested === "schedule" ? "schedule" : "roster";
 
-  const standings = computeStandings().map((row, index) => ({
-    row,
-    team: requireTeam(row.teamSlug),
-    rank: index + 1,
-  }));
+  const standings = standingsLines(data);
   const line = standings.find((entry) => entry.team.slug === slug);
   const row = line?.row;
 
-  const roster = getRoster(slug);
-  const fixtures = matchesForTeam(slug);
+  const roster = getRoster(data, slug);
+  const fixtures = matchesForTeam(data, slug);
   const results = fixtures.filter((match) => match.status === "final").reverse();
-  const upcoming = fixtures.filter((match) => match.status !== "final");
+  const upcoming = fixtures.filter((match) => match.status !== "final" && match.status !== "canceled");
   const tiles = buildRailTiles(fixtures, standings, 14);
 
   const tabs = [
@@ -155,9 +152,9 @@ export default async function TeamPage({ params, searchParams }: Props) {
               if (group.length === 0) return null;
 
               return (
-                <div key={position} className="bc-card bc-flush overflow-hidden">
+                <div key={position ?? "squad"} className="bc-card bc-flush overflow-hidden">
                   <h2 className="bc-label border-b border-line px-4 py-3 text-[0.7rem] text-ink-muted">
-                    {positionLabels[position]}
+                    {positionLabel(position)}
                   </h2>
 
                   {/* Table on desktop, stacked rows on phones. */}
@@ -168,7 +165,6 @@ export default async function TeamPage({ params, searchParams }: Props) {
                           <th scope="col" className="w-12 py-2 pl-4">#</th>
                           <th scope="col" className="py-2">Name</th>
                           <th scope="col" className="py-2">Yr</th>
-                          <th scope="col" className="py-2">Ht</th>
                           <th scope="col" className="py-2">Hometown</th>
                           <th scope="col" className="py-2 text-center">GP</th>
                           <th scope="col" className="py-2 text-center">G</th>
@@ -179,11 +175,10 @@ export default async function TeamPage({ params, searchParams }: Props) {
                         {group.map((player) => (
                           <tr key={player.id} className="border-t border-line/70">
                             <td className="bc-row pl-4 font-bold text-ink-faint tabular-nums">
-                              {player.number}
+                              {player.number ?? ""}
                             </td>
                             <td className="bc-row font-semibold text-ink">{player.name}</td>
                             <td className="bc-row text-ink-muted">{player.year}</td>
-                            <td className="bc-row text-ink-muted tabular-nums">{player.height}</td>
                             <td className="bc-row text-ink-muted">{player.hometown}</td>
                             <td className="bc-row text-center text-ink-muted tabular-nums">
                               {player.stats.gp}
@@ -207,14 +202,14 @@ export default async function TeamPage({ params, searchParams }: Props) {
                         className="bc-row flex items-center gap-3 border-t border-line/70 px-4"
                       >
                         <span className="w-7 shrink-0 text-center text-[0.95rem] font-black text-ink-faint tabular-nums">
-                          {player.number}
+                          {player.number ?? ""}
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[0.85rem] font-semibold text-ink">
                             {player.name}
                           </p>
                           <p className="truncate text-[0.72rem] text-ink-muted">
-                            {player.year} · {player.height} · {player.hometown}
+                            {[player.year, player.hometown].filter(Boolean).join(" · ")}
                           </p>
                         </div>
                         <span className="shrink-0 text-right text-[0.72rem] text-ink-muted tabular-nums">
