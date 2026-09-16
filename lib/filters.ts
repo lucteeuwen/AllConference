@@ -95,13 +95,15 @@ export function applyFilters(
       return false;
     }
 
-    if (filters.competition === "conference" && !match.isConference) return false;
-    if (filters.competition === "non-conference" && match.isConference) return false;
+    // The CCIW tournament counts as conference play for filtering.
+    const conference = match.isConference || ["quarterfinal", "semifinal", "final"].includes(match.stage);
+    if (filters.competition === "conference" && !conference) return false;
+    if (filters.competition === "non-conference" && conference) return false;
 
     if (
       filters.teamSlugs.length > 0 &&
-      !filters.teamSlugs.includes(match.home.teamSlug) &&
-      !filters.teamSlugs.includes(match.away.teamSlug)
+      !filters.teamSlugs.includes(match.home.teamSlug ?? "") &&
+      !filters.teamSlugs.includes(match.away.teamSlug ?? "")
     ) {
       return false;
     }

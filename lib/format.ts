@@ -1,4 +1,4 @@
-import { CONFERENCE_TZ, TODAY_KEY, dayKeyForOffset } from "@/lib/data/season";
+import { CONFERENCE_TZ, todayKey } from "@/lib/season";
 
 /**
  * Every formatter pins the time zone to Central so the server-rendered string
@@ -27,8 +27,18 @@ function instantForDayKey(key: string): Date {
   return new Date(`${key}T12:00:00Z`);
 }
 
+const clockFormat = formatter({ hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+
+/**
+ * Games whose time is not set yet (tournament rounds) are stored at Central
+ * midnight; nothing kicks off then, so that reads as "to be announced".
+ */
+export function isTimeTba(iso: string): boolean {
+  return clockFormat.format(new Date(iso)) === "00:00";
+}
+
 export function formatKickoff(iso: string): string {
-  return timeFormat.format(new Date(iso));
+  return isTimeTba(iso) ? "TBA" : timeFormat.format(new Date(iso));
 }
 
 export function formatDayHeading(iso: string): string {
@@ -40,26 +50,27 @@ export function formatShortDate(iso: string): string {
 }
 
 export function formatFullDate(iso: string): string {
-  return fullFormat.format(new Date(iso));
+  return isTimeTba(iso) ? `${headingFormat.format(new Date(iso))} · time TBA` : fullFormat.format(new Date(iso));
 }
 
-const YESTERDAY_KEY = dayKeyForOffset(-1);
-const TOMORROW_KEY = dayKeyForOffset(1);
+/** "Today", "Yesterday" or "Tomorrow" when the key is one of those. */
+function relativeDay(key: string): string | null {
+  if (key === todayKey()) return "Today";
+  if (key === todayKey(-1)) return "Yesterday";
+  if (key === todayKey(1)) return "Tomorrow";
+  return null;
+}
 
 /** Heading above a day's fixtures: "Today" reads better than the date. */
 export function formatDayLabel(key: string): string {
-  if (key === TODAY_KEY) return "Today";
-  if (key === YESTERDAY_KEY) return "Yesterday";
-  if (key === TOMORROW_KEY) return "Tomorrow";
-  return headingFormat.format(instantForDayKey(key));
+  return relativeDay(key) ?? headingFormat.format(instantForDayKey(key));
 }
 
 /** Two-line label for the date strip chips. */
 export function formatChipLabel(key: string): { top: string; bottom: string } {
   const instant = instantForDayKey(key);
-  if (key === TODAY_KEY) return { top: "Today", bottom: shortFormat.format(instant) };
-  if (key === YESTERDAY_KEY) return { top: "Yesterday", bottom: shortFormat.format(instant) };
-  if (key === TOMORROW_KEY) return { top: "Tomorrow", bottom: shortFormat.format(instant) };
+  const relative = relativeDay(key);
+  if (relative) return { top: relative, bottom: shortFormat.format(instant) };
   return {
     top: weekdayFormat.format(instant),
     bottom: `${shortFormat.format(instant).split(" ")[0]} ${dayNumberFormat.format(instant)}`,
@@ -67,7 +78,5 @@ export function formatChipLabel(key: string): { top: string; bottom: string } {
 }
 
 export function isPastDay(key: string): boolean {
-  return key < TODAY_KEY;
+  return key < todayKey();
 }
-
-export { TODAY_KEY };

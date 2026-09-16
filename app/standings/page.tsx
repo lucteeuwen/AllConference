@@ -3,24 +3,21 @@ import { Lockup, SectionHeader } from "@/components/broadcast/Lockup";
 import { ScorersSnippet } from "@/components/broadcast/StandingsSnippet";
 import { StandingsTable, type StandingsEntry } from "@/components/StandingsTable";
 import { Reveal } from "@/components/broadcast/Reveal";
-import { computeStandings, getTopScorers, requireTeam } from "@/lib/selectors";
-import { SEASON_LABEL } from "@/lib/data/season";
+import { Bracket } from "@/components/Bracket";
+import { getTopScorers, standingsLines } from "@/lib/selectors";
+import { SEASON_LABEL } from "@/lib/season";
+import { getSeasonData } from "@/lib/season-data";
 
 export const metadata: Metadata = {
   title: "Standings",
 };
 
-/**
- * The dummy schedule is generated relative to the current date, so this
- * derived page must not be frozen into the build output.
- */
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
-export default function StandingsPage() {
-  const entries: StandingsEntry[] = computeStandings().map((row) => ({
-    row,
-    team: requireTeam(row.teamSlug),
-  }));
+export default async function StandingsPage() {
+  const data = await getSeasonData();
+  const entries: StandingsEntry[] = standingsLines(data).map(({ row, team }) => ({ row, team }));
+  const scorers = getTopScorers(data, 8);
 
   return (
     <div className="bc-stack">
@@ -54,9 +51,18 @@ export default function StandingsPage() {
       </div>
 
       <Reveal>
+        <section id="tournament" className="scroll-mt-6">
+          <SectionHeader title="CCIW Tournament" />
+          <div className="bc-card bc-pad">
+            <Bracket bracket={data.bracket} matches={data.matches} teams={data.teams} />
+          </div>
+        </section>
+      </Reveal>
+
+      <Reveal>
         <section id="scoring-leaders" className="scroll-mt-6">
           <SectionHeader title="Scoring leaders" />
-          <ScorersSnippet scorers={getTopScorers(8)} />
+          <ScorersSnippet scorers={scorers} />
         </section>
       </Reveal>
     </div>

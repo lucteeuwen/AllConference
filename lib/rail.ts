@@ -1,7 +1,6 @@
 import type { RailTile } from "@/components/broadcast/ScoreboardRail";
 import { formatKickoff } from "@/lib/format";
-import { requireTeam } from "@/lib/selectors";
-import type { HomeData } from "@/lib/home";
+import type { StandingsLine } from "@/lib/selectors";
 import type { Match } from "@/lib/types";
 
 /**
@@ -11,7 +10,7 @@ import type { Match } from "@/lib/types";
  */
 export function buildRailTiles(
   matches: Match[],
-  standings: HomeData["standings"],
+  standings: StandingsLine[],
   limit = 12,
 ): RailTile[] {
   const records = new Map(
@@ -25,34 +24,53 @@ export function buildRailTiles(
 
   return matches
     .filter((match) => !seen.has(match.id) && seen.add(match.id))
+    .filter((match) => match.status !== "canceled")
     .slice(0, limit)
     .map((match) => {
-      const home = requireTeam(match.home.teamSlug);
-      const away = requireTeam(match.away.teamSlug);
       const decided =
         match.status === "final" && match.home.score !== null && match.away.score !== null;
+      const homeWins =
+        decided &&
+        ((match.home.score as number) > (match.away.score as number) ||
+          (match.home.score === match.away.score && (match.home.pens ?? 0) > (match.away.pens ?? 0)));
+      const awayWins =
+        decided &&
+        ((match.away.score as number) > (match.home.score as number) ||
+          (match.home.score === match.away.score && (match.away.pens ?? 0) > (match.home.pens ?? 0)));
 
       return {
         id: match.id,
         live: match.status === "live",
         status:
           match.status === "live"
-            ? `${match.minute}'`
+            ? match.minute
+              ? `${match.minute}'`
+              : "Live"
             : match.status === "final"
-              ? "Final"
+              ? "Full time"
               : match.status === "postponed"
                 ? "PPD"
                 : formatKickoff(match.date),
-        note: match.isConference ? "CCIW" : "Non-conf",
-        home: { team: home, score: match.home.score, record: records.get(home.slug) ?? "0-0-0" },
-        away: { team: away, score: match.away.score, record: records.get(away.slug) ?? "0-0-0" },
-        winner: !decided
-          ? null
-          : (match.home.score as number) > (match.away.score as number)
-            ? "home"
-            : (match.away.score as number) > (match.home.score as number)
-              ? "away"
-              : null,
+        note:
+          match.stage === "regular"
+            ? match.isConference
+              ? "CCIW"
+              : "Non-conf"
+            : match.stage === "ncaa"
+              ? "NCAA"
+              : "CCIW Tourn.",
+        home: {
+          team: match.home.team,
+          score: match.home.score,
+          // A TBC side shows what it is waiting on where the record would be.
+          record: match.home.teamSlug ? (records.get(match.home.teamSlug) ?? "") : (match.home.placeholder ?? ""),
+        },
+        away: {
+          team: match.away.team,
+          score: match.away.score,
+          record: match.away.teamSlug ? (records.get(match.away.teamSlug) ?? "") : (match.away.placeholder ?? ""),
+        },
+        winner: homeWins ? "home" : awayWins ? "away" : null,
       };
     });
 }

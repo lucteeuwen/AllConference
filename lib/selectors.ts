@@ -1,10 +1,10 @@
-import { allTeams, conferenceSlugs, teams } from "@/lib/data/teams";
-import { matches } from "@/lib/data/matches";
-import { rosters, playersById } from "@/lib/data/rosters";
-import { dayKey } from "@/lib/data/season";
+import { dayKey } from "@/lib/season";
+import type { SeasonData } from "@/lib/season-data";
+import { computeStandings as reduceStandings, goalDifference, played } from "@/lib/standings";
 import type {
   Match,
   Player,
+  Position,
   RecordLine,
   Result,
   StandingsRow,
@@ -12,49 +12,32 @@ import type {
   Team,
 } from "@/lib/types";
 
-/** Single read path for every page. Swapping in a live backend stops here. */
+/**
+ * Derived views over one loaded season. Pages call `getSeasonData()` once and
+ * pass the result in, so nothing here touches the database.
+ */
 
-const teamIndex = new Map(allTeams.map((team) => [team.slug, team]));
+export { goalDifference, played };
 
-export function getTeam(slug: string): Team | undefined {
-  return teamIndex.get(slug);
+export function getTeam(data: SeasonData, slug: string): Team | undefined {
+  return data.teams.find((team) => team.slug === slug);
 }
 
-/** Falls back to a grey placeholder so an unknown opponent never crashes a page. */
-export function requireTeam(slug: string): Team {
-  return (
-    teamIndex.get(slug) ?? {
-      slug,
-      name: slug,
-      fullName: slug,
-      nickname: "",
-      primary: "#6b7280",
-      secondary: "#ffffff",
-      abbr: slug.slice(0, 3).toUpperCase(),
-      location: "",
-      venue: "",
-    }
-  );
+export function getMatch(data: SeasonData, id: string): Match | undefined {
+  return data.matches.find((match) => match.id === id);
 }
 
-export function getAllMatches(): Match[] {
-  return matches;
-}
+const positionRank: Record<Position, number> = { GK: 0, D: 1, M: 2, F: 3 };
 
-export function getMatch(id: string): Match | undefined {
-  return matches.find((match) => match.id === id);
-}
-
-export function getConferenceTeams(): Team[] {
-  return teams;
-}
-
-export function getRoster(slug: string): Player[] {
-  return [...(rosters[slug] ?? [])].sort((a, b) => a.number - b.number);
-}
-
-export function getPlayer(id: string): Player | undefined {
-  return playersById[id];
+export function getRoster(data: SeasonData, slug: string): Player[] {
+  return data.players
+    .filter((player) => player.teamSlug === slug)
+    .sort(
+      (a, b) =>
+        (a.number ?? 999) - (b.number ?? 999) ||
+        (a.position ? positionRank[a.position] : 9) - (b.position ? positionRank[b.position] : 9) ||
+        a.name.localeCompare(b.name),
+    );
 }
 
 export type ScorerLine = {
@@ -66,16 +49,16 @@ export type ScorerLine = {
 /**
  * Conference scoring leaders. Points follow the NCAA convention of two for a
  * goal and one for an assist, which is how college soccer ranks its leaders.
+ * These are season totals, non-conference games included, as the schools
+ * publish them.
  */
-export function getTopScorers(limit = 5): ScorerLine[] {
-  return teams
-    .flatMap((team) =>
-      (rosters[team.slug] ?? []).map((player) => ({
-        player,
-        team,
-        points: player.stats.goals * 2 + player.stats.assists,
-      })),
-    )
+export function getTopScorers(data: SeasonData, limit = 5): ScorerLine[] {
+  const teams = new Map(data.conference.map((team) => [team.slug, team]));
+  return data.players
+    .flatMap((player) => {
+      const team = teams.get(player.teamSlug);
+      return team ? [{ player, team, points: player.stats.goals * 2 + player.stats.assists }] : [];
+    })
     .filter((line) => line.points > 0)
     .sort(
       (a, b) =>
@@ -86,14 +69,10 @@ export function getTopScorers(limit = 5): ScorerLine[] {
     .slice(0, limit);
 }
 
-export function matchesForTeam(slug: string): Match[] {
-  return matches.filter(
+export function matchesForTeam(data: SeasonData, slug: string): Match[] {
+  return data.matches.filter(
     (match) => match.home.teamSlug === slug || match.away.teamSlug === slug,
   );
-}
-
-export function getLiveMatches(): Match[] {
-  return matches.filter((match) => match.status === "live");
 }
 
 /** Result of a finished match from one team's point of view. */
@@ -109,88 +88,27 @@ export function resultFor(match: Match, slug: string): Result | null {
   return "D";
 }
 
-function emptyRecord(): RecordLine {
-  return { w: 0, l: 0, d: 0, pts: 0, gf: 0, ga: 0 };
-}
-
-function addResult(record: RecordLine, own: number, other: number): void {
-  record.gf += own;
-  record.ga += other;
-  if (own > other) {
-    record.w += 1;
-    record.pts += 3;
-  } else if (own < other) {
-    record.l += 1;
-  } else {
-    record.d += 1;
-    record.pts += 1;
-  }
-}
-
-export function played(record: RecordLine): number {
-  return record.w + record.l + record.d;
-}
-
-export function goalDifference(record: RecordLine): number {
-  return record.gf - record.ga;
-}
-
-/**
- * Builds the table from finished matches rather than storing it, so the numbers
- * stay consistent with the fixture list and the reducer survives the move to
- * scraped data. Three points for a win, one for a draw. Postponed and scheduled
- * matches are ignored.
- */
-export function computeStandings(): StandingsRow[] {
-  const rows = new Map<string, StandingsRow>(
-    teams.map((team) => [
-      team.slug,
-      {
-        teamSlug: team.slug,
-        conference: emptyRecord(),
-        overall: emptyRecord(),
-        home: emptyRecord(),
-        away: emptyRecord(),
-        form: [],
-      },
-    ]),
+export function computeStandings(data: SeasonData): StandingsRow[] {
+  const names = new Map(data.teams.map((team) => [team.slug, team.name]));
+  return reduceStandings(
+    data.matches,
+    data.conference.map((team) => team.slug),
+    (slug) => names.get(slug) ?? slug,
   );
-
-  for (const match of matches) {
-    if (match.status !== "final" || match.home.score === null || match.away.score === null) {
-      continue;
-    }
-
-    for (const side of ["home", "away"] as const) {
-      const slug = match[side].teamSlug;
-      const row = rows.get(slug);
-      if (!row) continue;
-
-      const own = match[side].score as number;
-      const other = (side === "home" ? match.away.score : match.home.score) as number;
-
-      addResult(row.overall, own, other);
-      addResult(row[side], own, other);
-      if (match.isConference && conferenceSlugs.has(match.home.teamSlug) && conferenceSlugs.has(match.away.teamSlug)) {
-        addResult(row.conference, own, other);
-      }
-      row.form.push(own > other ? "W" : own < other ? "L" : "D");
-    }
-  }
-
-  return [...rows.values()]
-    .map((row) => ({ ...row, form: row.form.slice(-5) }))
-    .sort(compareStandings);
 }
 
-/** Conference points, then goal difference, then goals for, then name. */
-function compareStandings(a: StandingsRow, b: StandingsRow): number {
-  return (
-    b.conference.pts - a.conference.pts ||
-    goalDifference(b.conference) - goalDifference(a.conference) ||
-    b.conference.gf - a.conference.gf ||
-    requireTeam(a.teamSlug).name.localeCompare(requireTeam(b.teamSlug).name)
-  );
+export type StandingsLine = {
+  row: StandingsRow;
+  team: Team;
+  rank: number;
+};
+
+export function standingsLines(data: SeasonData): StandingsLine[] {
+  const teams = new Map(data.teams.map((team) => [team.slug, team]));
+  return computeStandings(data).flatMap((row, index) => {
+    const team = teams.get(row.teamSlug);
+    return team ? [{ row, team, rank: index + 1 }] : [];
+  });
 }
 
 export function recordForSplit(row: StandingsRow, split: StandingsSplit): RecordLine {
@@ -218,4 +136,20 @@ export function groupMatchesByDate(list: Match[]): DayGroup[] {
   }
 
   return [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
+}
+
+/** Label for a match's competition, used on cards and the match page. */
+export function competitionLabel(match: Match, long = false): string {
+  switch (match.stage) {
+    case "quarterfinal":
+      return "CCIW Tournament · Quarterfinal";
+    case "semifinal":
+      return "CCIW Tournament · Semifinal";
+    case "final":
+      return "CCIW Tournament · Final";
+    case "ncaa":
+      return "NCAA Tournament";
+    default:
+      return match.isConference ? (long ? "CCIW Conference" : "CCIW") : "Non-conference";
+  }
 }

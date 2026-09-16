@@ -1,6 +1,5 @@
 import { TeamBadge } from "@/components/TeamBadge";
-import { requireTeam } from "@/lib/selectors";
-import type { HomeData } from "@/lib/home";
+import type { StandingsLine } from "@/lib/selectors";
 import type { Match } from "@/lib/types";
 
 /**
@@ -13,28 +12,39 @@ export function Boxscore({
   showHeading = true,
 }: {
   match: Match;
-  standings: HomeData["standings"];
+  standings: StandingsLine[];
   /** The home page's collapsible header already carries this label. */
   showHeading?: boolean;
 }) {
+  // Splits come from the timeline; without one only the total is known.
+  const goalEvents = match.events.filter(
+    (event) => event.type === "goal" || event.type === "penalty" || event.type === "own-goal",
+  );
+  const hasTimeline = goalEvents.length > 0 || (match.home.score === 0 && match.away.score === 0);
+  const overtime = goalEvents.some((event) => event.minute > 90);
+
   const halves = (["home", "away"] as const).map((side) => {
     const slug = match[side].teamSlug;
-    const goals = match.events.filter(
-      (event) => event.teamSlug === slug && (event.type === "goal" || event.type === "penalty"),
-    );
+    const goals = goalEvents.filter((event) => event.teamSlug === slug);
     return {
-      team: requireTeam(slug),
+      key: side,
+      team: match[side].team,
       first: goals.filter((event) => event.minute <= 45).length,
-      second: goals.filter((event) => event.minute > 45).length,
+      second: goals.filter((event) => event.minute > 45 && event.minute <= 90).length,
+      extra: goals.filter((event) => event.minute > 90).length,
       total: match[side].score,
     };
   });
+  const split = (value: number, total: number | null) =>
+    total === null || !hasTimeline ? "–" : value;
 
   // Points share between the two sides, the honest stand-in for the
   // possession donut in the reference, given the data we actually hold. It
   // only means anything when both sides are in the table, so a non-conference
   // opponent drops the donut rather than showing a fictional 0%.
-  const rows = halves.map((half) => standings.find((line) => line.team.slug === half.team.slug));
+  const rows = halves.map((half) =>
+    standings.find((line) => line.team.slug === match[half.key].teamSlug),
+  );
   const comparable = rows.every(Boolean);
   const points = rows.map((line) => line?.row.conference.pts ?? 0);
   const total = points[0] + points[1] || 1;
@@ -52,12 +62,13 @@ export function Boxscore({
               <th scope="col" className="pb-1.5 text-left">Team</th>
               <th scope="col" className="px-3 pb-1.5 text-center">1H</th>
               <th scope="col" className="px-3 pb-1.5 text-center">2H</th>
+              {overtime ? <th scope="col" className="px-3 pb-1.5 text-center">OT</th> : null}
               <th scope="col" className="pb-1.5 pl-3 text-center">Total</th>
             </tr>
           </thead>
           <tbody>
             {halves.map((half) => (
-              <tr key={half.team.slug} className="border-t border-line">
+              <tr key={half.key} className="border-t border-line">
                 <td className="bc-row">
                   <span className="flex items-center gap-2">
                     <TeamBadge team={half.team} size="xs" />
@@ -65,11 +76,16 @@ export function Boxscore({
                   </span>
                 </td>
                 <td className="bc-row px-3 text-center text-ink-muted tabular-nums">
-                  {half.total === null ? "–" : half.first}
+                  {split(half.first, half.total)}
                 </td>
                 <td className="bc-row px-3 text-center text-ink-muted tabular-nums">
-                  {half.total === null ? "–" : half.second}
+                  {split(half.second, half.total)}
                 </td>
+                {overtime ? (
+                  <td className="bc-row px-3 text-center text-ink-muted tabular-nums">
+                    {split(half.extra, half.total)}
+                  </td>
+                ) : null}
                 <td className="bc-row pl-3 text-center text-[0.95rem] font-black text-ink tabular-nums">
                   {half.total ?? "–"}
                 </td>
@@ -95,7 +111,7 @@ export function Boxscore({
         <div className="text-[0.78rem]">
           <p className="bc-label mb-1 text-[0.65rem] text-ink-faint">CCIW points share</p>
           {halves.map((half, index) => (
-            <p key={half.team.slug} className="flex items-center gap-1.5 py-0.5">
+            <p key={half.key} className="flex items-center gap-1.5 py-0.5">
               <span className="team-color size-2 rounded-full" style={{ background: half.team.primary }} />
               <span className="font-semibold text-ink">{half.team.name}</span>
               <span className="ml-auto pl-3 font-black text-ink tabular-nums">

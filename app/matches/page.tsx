@@ -1,17 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Lockup } from "@/components/broadcast/Lockup";
-import { ScoreboardRail } from "@/components/broadcast/ScoreboardRail";
-import { buildRailTiles } from "@/lib/rail";
-import { computeStandings, requireTeam } from "@/lib/selectors";
 import { DateStrip, type DayChip } from "@/components/DateStrip";
 import { MatchFilterBar } from "@/components/MatchFilterBar";
 import { MatchRow } from "@/components/broadcast/MatchRow";
 import { EmptyState } from "@/components/EmptyState";
 import { applyFilters, filtersToQuery, parseFilters, type MatchFilters } from "@/lib/filters";
-import { formatChipLabel, formatDayLabel, TODAY_KEY } from "@/lib/format";
-import { SEASON_LABEL, dayKey } from "@/lib/data/season";
-import { getAllMatches, getConferenceTeams, groupMatchesByDate, type DayGroup } from "@/lib/selectors";
+import { formatChipLabel, formatDayLabel } from "@/lib/format";
+import { SEASON_LABEL, dayKey, todayKey } from "@/lib/season";
+import { getSeasonData } from "@/lib/season-data";
+import { groupMatchesByDate, type DayGroup } from "@/lib/selectors";
 
 export const metadata: Metadata = {
   title: "Matches",
@@ -70,7 +68,9 @@ function EarlierToggle({ filters, count }: { filters: MatchFilters; count: numbe
 
 export default async function MatchesPage(props: PageProps<"/matches">) {
   const filters = parseFilters(await props.searchParams);
-  const all = getAllMatches();
+  const data = await getSeasonData();
+  const all = data.matches;
+  const today = todayKey();
   const visible = applyFilters(all, filters, dayKey);
 
   // The rail always shows every match day, so clearing a narrow filter is one tap.
@@ -82,13 +82,13 @@ export default async function MatchesPage(props: PageProps<"/matches">) {
       top: label.top,
       bottom: label.bottom,
       count: group.matches.length,
-      isToday: group.key === TODAY_KEY,
+      isToday: group.key === today,
     };
   });
 
   const groups = groupMatchesByDate(visible);
-  const past = groups.filter((group) => group.key < TODAY_KEY);
-  const current = groups.filter((group) => group.key >= TODAY_KEY);
+  const past = groups.filter((group) => group.key < today);
+  const current = groups.filter((group) => group.key >= today);
   const pastCount = past.reduce((total, group) => total + group.matches.length, 0);
 
   // A results-only view is entirely behind us, and so is a season that has run
@@ -102,23 +102,9 @@ export default async function MatchesPage(props: PageProps<"/matches">) {
       ? [...groups].reverse()
       : groups;
 
-  // The rail leads with what is happening now, then what is next, then what
-  // just finished. Feeding it the season in date order would strand it in
-  // August.
-  const railSource = [
-    ...current.flatMap((group) => group.matches),
-    ...[...past].reverse().flatMap((group) => group.matches),
-  ];
-  const tiles = buildRailTiles(
-    railSource,
-    computeStandings().map((row, index) => ({ row, team: requireTeam(row.teamSlug), rank: index + 1 })),
-    12,
-  );
-
   const shown = splitAtToday
     ? (filters.showPast ? groups : current).reduce((total, group) => total + group.matches.length, 0)
     : visible.length;
-
 
   return (
     <>
@@ -127,19 +113,14 @@ export default async function MatchesPage(props: PageProps<"/matches">) {
           chips={chips}
           allHref={`/matches${filtersToQuery({ ...filters, day: null })}`}
           activeDay={filters.day}
+          today={today}
         />
       </Lockup>
-
-      {tiles.length > 0 ? (
-        <div className="bc-rail mt-6">
-          <ScoreboardRail tiles={tiles} />
-        </div>
-      ) : null}
 
       <div className="mt-6">
         <MatchFilterBar
           filters={filters}
-          teams={getConferenceTeams()}
+          teams={data.conference}
           shown={shown}
           total={all.length}
         />
