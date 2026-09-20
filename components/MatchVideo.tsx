@@ -1,9 +1,10 @@
 import type { MatchVideo as Video } from "@/lib/types";
 
 /**
- * A specific YouTube video plays inline. Everything else (CCIW Network on
- * Hudl TV, FloCollege, channel pages) opens the provider in a new tab, since
- * those players need a subscription or do not point at one game.
+ * A specific YouTube video plays inline. Everything else opens the provider in
+ * a new tab, since those players need a subscription. A link that isn't this
+ * game's own stream is presented as the platform's page, with a note, rather
+ * than as the game.
  */
 export function MatchVideo({ video, live }: { video: Video; live: boolean }) {
   if (video.embedUrl) {
@@ -22,7 +23,7 @@ export function MatchVideo({ video, live }: { video: Video; live: boolean }) {
     );
   }
 
-  return (
+  const link = (
     <a
       href={video.url}
       target="_blank"
@@ -33,8 +34,19 @@ export function MatchVideo({ video, live }: { video: Video; live: boolean }) {
         <path d="M4 2.5v11l9-5.5z" />
       </svg>
       {video.label}
-      {live ? <span className="live-dot size-1.5 rounded-full bg-white" /> : null}
+      {live && video.exact ? <span className="live-dot size-1.5 rounded-full bg-white" /> : null}
       <span className="sr-only">(opens in a new tab)</span>
     </a>
+  );
+
+  if (video.exact) return link;
+  return (
+    <div className="flex flex-col items-start gap-2.5">
+      {link}
+      <p className="text-[0.75rem] text-ink-muted">
+        We can&apos;t confirm the exact stream for this match, so this opens {video.platform}. Look for the
+        game there.
+      </p>
+    </div>
   );
 }

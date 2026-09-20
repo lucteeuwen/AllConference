@@ -1,23 +1,25 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BackButton } from "@/components/BackButton";
+import { EarlierMatches } from "@/components/EarlierMatches";
 import { WashHero } from "@/components/broadcast/WashHero";
 import { OverlapCard } from "@/components/broadcast/OverlapCard";
 import { MatchRow } from "@/components/broadcast/MatchRow";
 import { ScoreboardRail } from "@/components/broadcast/ScoreboardRail";
-import { SectionHeader } from "@/components/broadcast/Lockup";
 import { Tabs } from "@/components/Tabs";
 import { TeamBadge } from "@/components/TeamBadge";
 import { FormDots } from "@/components/FormDots";
 import { buildRailTiles } from "@/lib/rail";
-import { SEASON_LABEL } from "@/lib/season";
+import { SEASON_LABEL, dayKey, todayKey } from "@/lib/season";
+import { recordFor } from "@/lib/standings";
 import { getSeasonData } from "@/lib/season-data";
 import {
+  conferenceStarted,
+  displayStandings,
   getRoster,
   getTeam,
   goalDifference,
   matchesForTeam,
-  played,
   standingsLines,
 } from "@/lib/selectors";
 import type { Player } from "@/lib/types";
@@ -60,21 +62,30 @@ export default async function TeamPage({ params, searchParams }: Props) {
 
   const query = await searchParams;
   const requested = Array.isArray(query.tab) ? query.tab[0] : query.tab;
-  const active = requested === "schedule" ? "schedule" : "roster";
+  const active = requested === "matches" ? "matches" : "roster";
+  const showPast = (Array.isArray(query.past) ? query.past[0] : query.past) === "1";
 
   const standings = standingsLines(data);
-  const line = standings.find((entry) => entry.team.slug === slug);
+  const started = conferenceStarted(standings);
+  // The same order as the standings table, so the badge always matches its `#`.
+  const line = displayStandings(standings).find((entry) => entry.team.slug === slug);
   const row = line?.row;
+  const shownRecord = row ? recordFor(row, "all", started) : undefined;
 
   const roster = getRoster(data, slug);
   const fixtures = matchesForTeam(data, slug);
-  const results = fixtures.filter((match) => match.status === "final").reverse();
-  const upcoming = fixtures.filter((match) => match.status !== "final" && match.status !== "canceled");
-  const tiles = buildRailTiles(fixtures, standings, 14);
+  const { tiles, centerIndex } = buildRailTiles(fixtures, standings, 14);
+
+  // Like the Matches page: the list starts today, earlier days sit behind a button.
+  const today = todayKey();
+  const past = fixtures.filter((match) => dayKey(match.date) < today);
+  const current = fixtures.filter((match) => dayKey(match.date) >= today);
+  const splitAtToday = current.length > 0;
+  const base = `/teams/${slug}?tab=matches`;
 
   const tabs = [
     { key: "roster", label: `Roster (${roster.length})`, href: `/teams/${slug}?tab=roster` },
-    { key: "schedule", label: `Schedule (${fixtures.length})`, href: `/teams/${slug}?tab=schedule` },
+    { key: "matches", label: `Matches (${fixtures.length})`, href: base },
   ];
 
   return (
@@ -82,15 +93,11 @@ export default async function TeamPage({ params, searchParams }: Props) {
       <section>
         <WashHero home={team}>
           <div className="mb-5 flex items-center justify-between">
-            <Link
-              href="/teams"
-              className="flex size-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
-              aria-label="Back to teams"
-            >
+            <BackButton fallbackHref="/teams" label="Back">
               <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            </Link>
+            </BackButton>
             <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
               {SEASON_LABEL}
             </span>
@@ -111,7 +118,8 @@ export default async function TeamPage({ params, searchParams }: Props) {
                 <span className="bc-label text-[0.62rem] text-white/55">Form</span>
                 <FormDots form={row.form} />
                 <span className="bc-label ml-1 rounded-control bg-white/12 px-2.5 py-1 text-[0.62rem] text-white/85">
-                  {line.rank === 1 ? "1st" : line.rank === 2 ? "2nd" : line.rank === 3 ? "3rd" : `${line.rank}th`} in CCIW
+                  {line.rank === 1 ? "1st" : line.rank === 2 ? "2nd" : line.rank === 3 ? "3rd" : `${line.rank}th`}{" "}
+                  {started ? "in CCIW" : "by form"}
                 </span>
               </div>
             ) : null}
@@ -122,7 +130,10 @@ export default async function TeamPage({ params, searchParams }: Props) {
           <OverlapCard>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
               <Stat label="CCIW" value={`${row.conference.w}-${row.conference.l}-${row.conference.d}`} />
-              <Stat label="Points" value={String(row.conference.pts)} />
+              <Stat
+                label={started ? "Points" : "Points (all games)"}
+                value={String(shownRecord?.pts ?? 0)}
+              />
               <Stat label="Overall" value={`${row.overall.w}-${row.overall.l}-${row.overall.d}`} />
               <Stat label="Goals" value={`${row.overall.gf} / ${row.overall.ga}`} />
               <Stat
@@ -136,7 +147,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
 
       {tiles.length > 0 ? (
         <div className="bc-rail">
-          <ScoreboardRail tiles={tiles} />
+          <ScoreboardRail tiles={tiles} centerIndex={centerIndex} />
         </div>
       ) : null}
 
@@ -223,28 +234,36 @@ export default async function TeamPage({ params, searchParams }: Props) {
             })}
           </div>
         ) : (
-          <div className="space-y-7">
-            {upcoming.length > 0 ? (
-              <section>
-                <SectionHeader title="Upcoming" />
+          <div className="[overflow-anchor:none]">
+            {fixtures.length === 0 ? null : splitAtToday ? (
+              <div className="space-y-7">
+                {past.length > 0 ? (
+                  <EarlierMatches
+                    count={past.length}
+                    open={showPast}
+                    openHref={`${base}&past=1`}
+                    closeHref={base}
+                  >
+                    <div className="space-y-2.5">
+                      {past.map((match) => (
+                        <MatchRow key={match.id} match={match} showDate />
+                      ))}
+                    </div>
+                  </EarlierMatches>
+                ) : null}
                 <div className="space-y-2.5">
-                  {upcoming.map((match) => (
-                    <MatchRow key={match.id} match={match} />
+                  {current.map((match) => (
+                    <MatchRow key={match.id} match={match} showDate />
                   ))}
                 </div>
-              </section>
-            ) : null}
-
-            {results.length > 0 ? (
-              <section>
-                <SectionHeader title={`Results · ${row ? played(row.overall) : results.length} played`} />
-                <div className="space-y-2.5">
-                  {results.map((match) => (
-                    <MatchRow key={match.id} match={match} />
-                  ))}
-                </div>
-              </section>
-            ) : null}
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {[...fixtures].reverse().map((match) => (
+                  <MatchRow key={match.id} match={match} showDate />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

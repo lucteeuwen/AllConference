@@ -61,6 +61,12 @@ export type MatchVideo = {
   /** Only for a specific YouTube video; channel links cannot be embedded. */
   embedUrl?: string;
   label: string;
+  /** True only when the link goes to this game's own stream or replay. */
+  exact: boolean;
+  /** The service the link is on, e.g. "CCIW Network". */
+  platform: string;
+  /** A Hudl broadcast id, so it can be checked against the broadcast's title. */
+  broadcastId?: string;
 };
 
 export type Match = {

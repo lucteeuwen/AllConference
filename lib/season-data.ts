@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import type { CardCounts } from "@/lib/comparison";
 import { SEASON } from "@/lib/season";
 import { TBC_TEAM } from "@/lib/teams";
 import { createServerClient } from "@/lib/supabase/server";
@@ -278,4 +279,29 @@ export const getMatchDetails = cache(
 export async function withDetails(match: Match): Promise<Match> {
   const details = await getMatchDetails(match.id);
   return { ...match, events: details.events, lineups: details.lineups };
+}
+
+const cardCounts = cache(async (key: string): Promise<CardCounts> => {
+  const db = createServerClient();
+  const { data, error } = await db
+    .from("match_events")
+    .select("team_slug, type")
+    .in("team_slug", key.split(","))
+    .in("type", ["yellow", "red"])
+    .like("match_id", `${SEASON}-%`);
+  if (error) throw new Error(error.message);
+
+  const counts: CardCounts = {};
+  for (const row of data ?? []) {
+    const slug = row.team_slug as string | null;
+    if (!slug) continue;
+    counts[slug] ??= { yellow: 0, red: 0 };
+    counts[slug][row.type === "red" ? "red" : "yellow"] += 1;
+  }
+  return counts;
+});
+
+/** Yellow and red cards this season for the given teams, from the box scores we hold. */
+export function getCardCounts(slugs: string[]): Promise<CardCounts> {
+  return cardCounts([...slugs].sort().join(","));
 }

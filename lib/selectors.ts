@@ -1,6 +1,11 @@
 import { dayKey } from "@/lib/season";
 import type { SeasonData } from "@/lib/season-data";
-import { computeStandings as reduceStandings, goalDifference, played } from "@/lib/standings";
+import {
+  compareByForm,
+  computeStandings as reduceStandings,
+  goalDifference,
+  played,
+} from "@/lib/standings";
 import type {
   Match,
   Player,
@@ -52,21 +57,30 @@ export type ScorerLine = {
  * These are season totals, non-conference games included, as the schools
  * publish them.
  */
-export function getTopScorers(data: SeasonData, limit = 5): ScorerLine[] {
+function rankScorers(data: SeasonData, keep: (player: Player) => boolean): ScorerLine[] {
   const teams = new Map(data.conference.map((team) => [team.slug, team]));
   return data.players
     .flatMap((player) => {
       const team = teams.get(player.teamSlug);
-      return team ? [{ player, team, points: player.stats.goals * 2 + player.stats.assists }] : [];
+      return team && keep(player)
+        ? [{ player, team, points: player.stats.goals * 2 + player.stats.assists }]
+        : [];
     })
-    .filter((line) => line.points > 0)
     .sort(
       (a, b) =>
         b.points - a.points ||
         b.player.stats.goals - a.player.stats.goals ||
         a.player.name.localeCompare(b.player.name),
-    )
-    .slice(0, limit);
+    );
+}
+
+export function getTopScorers(data: SeasonData, limit = 5): ScorerLine[] {
+  return rankScorers(data, (player) => player.stats.goals * 2 + player.stats.assists > 0).slice(0, limit);
+}
+
+/** Every conference player with at least one goal, ranked like the leaders. */
+export function getGoalScorers(data: SeasonData): ScorerLine[] {
+  return rankScorers(data, (player) => player.stats.goals >= 1);
 }
 
 export function matchesForTeam(data: SeasonData, slug: string): Match[] {
@@ -109,6 +123,22 @@ export function standingsLines(data: SeasonData): StandingsLine[] {
     const team = teams.get(row.teamSlug);
     return team ? [{ row, team, rank: index + 1 }] : [];
   });
+}
+
+/** False until the first conference match has been played. */
+export function conferenceStarted(lines: StandingsLine[]): boolean {
+  return lines.some((line) => played(line.row.conference) > 0);
+}
+
+/**
+ * The table as readers see it: by points once conference play is under way,
+ * by recent form (re-ranked 1..n) until then, when every team sits on zero.
+ */
+export function displayStandings(lines: StandingsLine[]): StandingsLine[] {
+  if (conferenceStarted(lines)) return lines;
+  return [...lines]
+    .sort((a, b) => compareByForm(a.row, b.row))
+    .map((line, index) => ({ ...line, rank: index + 1 }));
 }
 
 export function recordForSplit(row: StandingsRow, split: StandingsSplit): RecordLine {

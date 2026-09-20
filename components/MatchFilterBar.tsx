@@ -1,11 +1,11 @@
 import Link from "next/link";
+import { SlidingSegments } from "@/components/SlidingSegments";
 import { TeamFilter, type TeamOption } from "@/components/TeamFilter";
 import {
   activeFilterCount,
   filtersToQuery,
   type CompetitionFilter,
   type MatchFilters,
-  type StatusFilter,
 } from "@/lib/filters";
 import type { Team } from "@/lib/types";
 
@@ -15,32 +15,11 @@ function href(filters: MatchFilters): string {
   return `${BASE}${filtersToQuery(filters)}`;
 }
 
-const statuses: { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "results", label: "Results" },
-  { value: "upcoming", label: "Upcoming" },
-];
-
 const competitions: { value: CompetitionFilter; label: string }[] = [
   { value: "all", label: "All games" },
   { value: "conference", label: "Conference" },
   { value: "non-conference", label: "Non-conference" },
 ];
-
-function Pill({ active, children, target }: { active: boolean; children: string; target: string }) {
-  return (
-    <Link
-      href={target}
-      scroll={false}
-      aria-current={active ? "true" : undefined}
-      className={`rounded-control px-3.5 py-1.5 text-[0.78rem] font-semibold transition ${
-        active ? "bg-accent text-white shadow-sm" : "text-ink-muted hover:text-ink"
-      }`}
-    >
-      {children}
-    </Link>
-  );
-}
 
 type Props = {
   filters: MatchFilters;
@@ -61,30 +40,15 @@ export function MatchFilterBar({ filters, teams, shown, total }: Props) {
   });
 
   return (
-    <div className="mb-5 flex flex-wrap items-center gap-2">
-      <div className="flex gap-1 rounded-control bg-ground p-1 ring-1 ring-line">
-        {statuses.map((option) => (
-          <Pill
-            key={option.value}
-            active={filters.status === option.value}
-            target={href({ ...filters, status: option.value })}
-          >
-            {option.label}
-          </Pill>
-        ))}
-      </div>
-
-      <div className="flex gap-1 rounded-control bg-ground p-1 ring-1 ring-line">
-        {competitions.map((option) => (
-          <Pill
-            key={option.value}
-            active={filters.competition === option.value}
-            target={href({ ...filters, competition: option.value })}
-          >
-            {option.label}
-          </Pill>
-        ))}
-      </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <SlidingSegments
+        label="Competition"
+        value={filters.competition}
+        options={competitions.map((option) => ({
+          ...option,
+          href: href({ ...filters, competition: option.value }),
+        }))}
+      />
 
       <TeamFilter
         options={teamOptions}

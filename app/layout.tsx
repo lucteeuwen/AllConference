@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { RouteTracker } from "@/components/RouteTracker";
 import { SiteNav } from "@/components/SiteNav";
-import { DesignSidebar } from "@/components/design/DesignSidebar";
 import "./globals.css";
 
 const inter = Inter({
@@ -19,10 +19,9 @@ export const metadata: Metadata = {
 };
 
 /**
- * Applies the stored theme and any design-sidebar overrides before first
- * paint, so neither flashes its default first. It has to run synchronously in
- * the head, which rules out next/script. The storage keys match
- * components/ThemeToggle.tsx and lib/design/store.ts.
+ * Applies the stored theme before first paint, so it doesn't flash its
+ * default first. It has to run synchronously in the head, which rules out
+ * next/script. The storage key matches components/ThemeToggle.tsx.
  */
 const bootScript = `
 (function () {
@@ -38,17 +37,6 @@ const bootScript = `
           : "light";
   } catch (e) {}
   root.dataset.theme = theme;
-
-  try {
-    var raw = window.localStorage.getItem("cciw-design");
-    if (raw) {
-      var design = JSON.parse(raw);
-      var vars = Object.assign({}, design.shared && design.shared.vars, design[theme] && design[theme].vars);
-      for (var key in vars) root.style.setProperty("--" + key, vars[key]);
-      var attrs = (design.shared && design.shared.attrs) || {};
-      for (var attr in attrs) root.setAttribute("data-" + attr, attrs[attr]);
-    }
-  } catch (e) {}
 })();
 `;
 
@@ -59,6 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: bootScript }} />
       </head>
       <body className="flex min-h-full flex-col bg-ground">
+        <RouteTracker />
         <SiteNav />
         <main
           className="mx-auto w-full flex-1 px-4 pb-24 md:px-6 md:pb-12"
@@ -66,7 +55,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           {children}
         </main>
-        <DesignSidebar />
       </body>
     </html>
   );

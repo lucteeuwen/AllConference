@@ -1,17 +1,25 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BackButton } from "@/components/BackButton";
 import { WashHero } from "@/components/broadcast/WashHero";
 import { OverlapCard } from "@/components/broadcast/OverlapCard";
 import { Boxscore } from "@/components/broadcast/Boxscore";
 import { sideName } from "@/components/broadcast/MatchRow";
-import { StandingsSnippet } from "@/components/broadcast/StandingsSnippet";
 import { MatchVideo } from "@/components/MatchVideo";
 import { TeamBadge } from "@/components/TeamBadge";
+import { TeamComparison } from "@/components/TeamComparison";
 import { Tabs } from "@/components/Tabs";
 import { formatFullDate, formatKickoff } from "@/lib/format";
-import { getSeasonData, withDetails } from "@/lib/season-data";
-import { competitionLabel, getMatch, standingsLines } from "@/lib/selectors";
+import { compareTeams } from "@/lib/comparison";
+import { getCardCounts, getSeasonData, withDetails } from "@/lib/season-data";
+import { verifyVideo } from "@/lib/video-verify";
+import {
+  competitionLabel,
+  conferenceStarted,
+  displayStandings,
+  getMatch,
+  standingsLines,
+} from "@/lib/selectors";
 import type { Lineup, Match, MatchEvent, MatchSide } from "@/lib/types";
 
 type Props = PageProps<"/matches/[id]">;
@@ -55,13 +63,18 @@ function EventIcon({ type }: { type: MatchEvent["type"] }) {
   );
 }
 
+/** Some schools leave the player blank, which their box score prints as "0". */
+const hasName = (name: string) => !/^(unknown|\d*)$/i.test(name.trim());
+
 function eventLabel(event: MatchEvent): string {
   const player = event.playerName;
-  if (event.type === "yellow") return `${player} booked`;
-  if (event.type === "red") return `${player} sent off`;
-  if (event.type === "penalty") return `${player} (pen.)`;
+  const named = hasName(player);
+  if (event.type === "yellow") return named ? `${player} booked` : "Yellow card";
+  if (event.type === "red") return named ? `${player} sent off` : "Red card";
+  if (event.type === "penalty") return named ? `${player} (pen.)` : "Penalty goal";
   if (event.type === "own-goal") return "Own goal";
-  return event.assistName ? `${player}, assist ${event.assistName}` : player;
+  if (!named) return "Goal";
+  return event.assistName && hasName(event.assistName) ? `${player}, assist ${event.assistName}` : player;
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -133,6 +146,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
   const base = getMatch(data, id);
   if (!base) notFound();
   const match = await withDetails(base);
+  const video = await verifyVideo(match.video, match, data.teams);
 
   const query = await searchParams;
   const requested = Array.isArray(query.tab) ? query.tab[0] : query.tab;
@@ -148,7 +162,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
     ...(match.lineups
       ? [{ key: "lineups", label: "Lineups", href: `/matches/${match.id}?tab=lineups` }]
       : []),
-    { key: "standings", label: "Standings", href: `/matches/${match.id}?tab=standings` },
+    { key: "teams", label: "Team stats", href: `/matches/${match.id}?tab=teams` },
   ];
   const active = tabs.some((tab) => tab.key === requested) ? (requested as string) : "details";
 
@@ -159,15 +173,11 @@ export default async function MatchPage({ params, searchParams }: Props) {
       <section>
         <WashHero home={home} away={away} celebrate={live ? match.id : false}>
           <div className="mb-5 flex items-center justify-between">
-            <Link
-              href="/matches"
-              className="flex size-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
-              aria-label="Back to matches"
-            >
+            <BackButton fallbackHref="/matches" label="Back">
               <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            </Link>
+            </BackButton>
             <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
               {competitionLabel(match, true)}
             </span>
@@ -246,12 +256,12 @@ export default async function MatchPage({ params, searchParams }: Props) {
 
         {active === "details" ? (
           <div className="grid gap-4 lg:grid-cols-2">
-            {match.video ? (
+            {video ? (
               <div className="bc-card bc-pad bc-shadow lg:col-span-2">
                 <h2 className="bc-label mb-3 text-[0.7rem] text-ink-faint">
-                  {match.status === "final" ? "Watch the replay" : "Watch"}
+                  {!video.exact ? "Where to watch" : match.status === "final" ? "Watch the replay" : "Watch"}
                 </h2>
-                <MatchVideo video={match.video} live={live} />
+                <MatchVideo video={video} live={live} />
               </div>
             ) : null}
 
@@ -316,7 +326,28 @@ export default async function MatchPage({ params, searchParams }: Props) {
           </div>
         ) : null}
 
-        {active === "standings" ? <StandingsSnippet standings={standings} limit={9} /> : null}
+        {active === "teams" && match.home.teamSlug && match.away.teamSlug ? (
+          <TeamComparison
+            comparison={compareTeams({
+              home,
+              away,
+              matchId: match.id,
+              matches: data.matches,
+              players: data.players,
+              ranks: Object.fromEntries(displayStandings(standings).map((line) => [line.team.slug, line.rank])),
+              conference: Object.fromEntries(standings.map((line) => [line.team.slug, line.row.conference])),
+              conferenceStarted: conferenceStarted(standings),
+              cards: await getCardCounts([match.home.teamSlug, match.away.teamSlug]),
+            })}
+            home={home}
+            away={away}
+          />
+        ) : null}
+        {active === "teams" && !(match.home.teamSlug && match.away.teamSlug) ? (
+          <div className="bc-card bc-pad bc-shadow text-center text-[0.82rem] text-ink-muted">
+            The teams for this match aren&apos;t decided yet, so there is nothing to compare.
+          </div>
+        ) : null}
       </div>
     </div>
   );

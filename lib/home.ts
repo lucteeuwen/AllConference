@@ -11,9 +11,10 @@ export type HomeData = {
   hero: Match | null;
   /** Server clock at render, so the browser's first paint agrees with it. */
   renderedAt: number;
-  today: Match[];
+  /** The whole season in date order; the scoreboard rail picks its own window. */
+  matches: Match[];
+  /** The next scheduled matches, today's included. */
   upcoming: Match[];
-  recent: Match[];
   standings: StandingsLine[];
   scorers: ScorerLine[];
 };
@@ -25,26 +26,17 @@ export async function getHomeData(at?: number): Promise<HomeData> {
   const all = data.matches;
   const today = todayKey(0, new Date(now));
 
-  const todays = all.filter((match) => dayKey(match.date) === today);
-
   const upcoming = all
-    .filter((match) => match.status === "scheduled" && dayKey(match.date) > today)
+    .filter((match) => match.status === "scheduled" && dayKey(match.date) >= today)
     .slice(0, 6);
-
-  // Newest first: the most recent result is the one worth leading with.
-  const recent = all
-    .filter((match) => match.status === "final")
-    .slice(-6)
-    .reverse();
 
   const hero = pickHeroMatch(all, now);
 
   return {
     hero: hero ? await withDetails(hero) : null,
     renderedAt: now,
-    today: todays,
+    matches: all,
     upcoming,
-    recent,
     standings: standingsLines(data),
     scorers: getTopScorers(data, 5),
   };
