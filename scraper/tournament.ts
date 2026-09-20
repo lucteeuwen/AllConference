@@ -134,7 +134,9 @@ export function buildBracket(input: {
 
   const roundDate = (round: RawRound): string | null => {
     const day = [...calendar.entries()].find(([, value]) => value === round)?.[0];
-    return day ? centralToUtc(`${day}T00:00:00`) : null;
+    // Noon, not midnight: with no kickoff published this is only a day anchor,
+    // and noon still reads as the right day in every reader's zone.
+    return day ? centralToUtc(`${day}T12:00:00`) : null;
   };
 
   const placeholderMatches: MatchRecord[] = [];
@@ -189,6 +191,8 @@ export function buildBracket(input: {
       home_pens: null,
       away_pens: null,
       venue: "",
+      timezone: null,
+      time_tbd: true,
       is_conference: false,
       stage: slot.round,
       bracket_slot: slot.slot,
@@ -197,7 +201,6 @@ export function buildBracket(input: {
       recap_url: null,
       source_school: home.slug ?? input.conferenceSlugs[0],
       source_game_id: 0,
-      timeTbd: true,
     };
     placeholderMatches.push(placeholder);
     bySlot.set(slot.slot, placeholder);

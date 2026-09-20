@@ -2,21 +2,22 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import { filtersToQuery, type MatchFilters } from "@/lib/filters";
+import { formatChipLabel } from "@/lib/format";
 
-export type DayChip = {
+export type DayCount = {
   key: string;
-  href: string;
-  top: string;
-  bottom: string;
   count: number;
-  isToday: boolean;
 };
 
 type Props = {
-  chips: DayChip[];
+  /** Every day with a match, keyed in the reader's zone. */
+  days: DayCount[];
+  /** Carried so each chip can build its own link without losing the filters. */
+  filters: MatchFilters;
   allHref: string;
   activeDay: string | null;
-  /** Day key the strip opens on when nothing is selected. */
+  /** Day key for today, in the reader's zone. */
   today: string;
 };
 
@@ -24,14 +25,20 @@ type Props = {
 const GAP_PX = 8;
 
 /**
- * Horizontal date rail. Labels arrive already formatted from the server so the
- * markup matches on hydration; the only client-side work is positioning the
- * scroll on mount. "All" stays pinned to the left while the day chips scroll
+ * Horizontal date rail. Labels are formatted here, in the reader's own zone,
+ * from day keys the list has already grouped; the scroll position is set on
+ * mount. "All" stays pinned to the left while the day chips scroll
  * underneath it: on phones its backing runs out to the screen edge (sticky
  * offsets are measured from the rail's padding, hence `-left-4`) so the button
  * keeps its inset, and it fades into the chips beside it.
  */
-export function DateStrip({ chips, allHref, activeDay, today }: Props) {
+export function DateStrip({ days, filters, allHref, activeDay, today }: Props) {
+  const chips = days.map((day) => ({
+    ...day,
+    ...formatChipLabel(day.key, today),
+    href: `/matches${filtersToQuery({ ...filters, day: day.key })}`,
+    isToday: day.key === today,
+  }));
   const railRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef<HTMLDivElement>(null);
   const chipRefs = useRef<Map<string, HTMLAnchorElement>>(new Map());

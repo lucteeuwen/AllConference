@@ -16,6 +16,8 @@ export type Team = {
   abbr: string;
   location: string;
   venue: string;
+  /** IANA zone of the school's own ground; null for one we could not place. */
+  timezone: string | null;
   isConference: boolean;
   logoUrl: string | null;
 };
@@ -81,6 +83,16 @@ export type Match = {
   home: MatchSide;
   away: MatchSide;
   venue: string;
+  /**
+   * IANA zone of the ground. Resolved on read, so it is always a real zone:
+   * the match's own, else the home side's, else the conference's.
+   */
+  timezone: string;
+  /**
+   * No kickoff published yet. `date` is then a day anchor (noon at the venue),
+   * not a time, so it must never be rendered as one.
+   */
+  timeTbd: boolean;
   isConference: boolean;
   stage: MatchStage;
   bracketSlot: string | null;

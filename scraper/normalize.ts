@@ -34,10 +34,10 @@ export function clockToMinute(clock: string): number {
   return seconds === 0 && minutes > 0 ? minutes : minutes + 1;
 }
 
-/** Central-time calendar day for an instant. */
-export function centralDay(iso: string): string {
+/** Calendar day for an instant in `tz`. */
+export function dayIn(iso: string, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: CONFERENCE_TZ,
+    timeZone: tz,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -45,13 +45,22 @@ export function centralDay(iso: string): string {
 }
 
 /**
- * The UTC instant at which the Central wall clock reads `local`
- * ("2026-10-31T00:00:00"). Used when a feed has no UTC date (TBA games).
+ * Central-time calendar day. This is the conference's own day, and it is what
+ * the match id and the merge key are built from: it must never follow a
+ * reader's zone, or every /matches/<id> URL would move.
  */
-export function centralToUtc(local: string): string {
+export function centralDay(iso: string): string {
+  return dayIn(iso, CONFERENCE_TZ);
+}
+
+/**
+ * The UTC instant at which `tz`'s wall clock reads `local`
+ * ("2026-10-31T12:00:00"). Used when a feed has no UTC date (TBA games).
+ */
+export function wallClockToUtc(local: string, tz: string): string {
   const naive = new Date(`${local.slice(0, 19)}Z`);
   const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: CONFERENCE_TZ,
+    timeZone: tz,
     hourCycle: "h23",
     year: "numeric",
     month: "2-digit",
@@ -61,9 +70,13 @@ export function centralToUtc(local: string): string {
     second: "2-digit",
   }).formatToParts(naive);
   const get = (type: string) => Number(parts.find((part) => part.type === type)?.value);
-  const asCentral = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
-  const offset = asCentral - naive.getTime();
+  const asLocal = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  const offset = asLocal - naive.getTime();
   return new Date(naive.getTime() - offset).toISOString();
+}
+
+export function centralToUtc(local: string): string {
+  return wallClockToUtc(local, CONFERENCE_TZ);
 }
 
 /** Two or three letters for a fallback badge: "Loras College" → "LC". */

@@ -15,7 +15,7 @@ export const HERO_LEAD_MS = 15 * 60_000;
 export const HERO_TAIL_MS = 15 * 60_000;
 /** Schools rarely flag a match as live, so assume it started after this. */
 export const START_GRACE_MS = 10 * 60_000;
-const ASSUMED_LENGTH_MS = 120 * 60_000;
+export const ASSUMED_LENGTH_MS = 120 * 60_000;
 
 export type HeroTiming = {
   kickoff: string;

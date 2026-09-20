@@ -1,31 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { heroPhase, minutesUntil, type HeroTiming } from "@/lib/hero";
+import { useNow } from "@/lib/use-now";
 
 /**
  * The home page's match box lives on a clock: it appears 15 minutes before
  * kickoff and leaves 15 minutes after full time. These pieces keep that honest
  * in an open tab without a reload.
  */
-
-const TICK_MS = 15_000;
-
-function subscribe(onTick: () => void) {
-  const timer = setInterval(onTick, TICK_MS);
-  return () => clearInterval(timer);
-}
-
-/** Current time, stepped every 15 s so snapshots stay stable between ticks. */
-function snapshot() {
-  return Math.floor(Date.now() / TICK_MS) * TICK_MS;
-}
-
-/** The server's clock during hydration, the browser's after. */
-function useNow(renderedAt: number): number {
-  return useSyncExternalStore(subscribe, snapshot, () => renderedAt);
-}
 
 /** Hides its children once the match leaves the window. */
 export function HeroWindow({

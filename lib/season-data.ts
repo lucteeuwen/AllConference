@@ -3,6 +3,7 @@ import { cache } from "react";
 import type { CardCounts } from "@/lib/comparison";
 import { SEASON } from "@/lib/season";
 import { TBC_TEAM } from "@/lib/teams";
+import { FALLBACK_TZ } from "@/lib/timezone";
 import { createServerClient } from "@/lib/supabase/server";
 import { classifyVideo } from "@/lib/video";
 import type {
@@ -42,6 +43,7 @@ type TeamRow = {
   secondary_color: string;
   location: string;
   venue: string;
+  timezone: string | null;
   is_conference: boolean;
   logo_url: string | null;
 };
@@ -61,6 +63,8 @@ type MatchRow = {
   home_pens: number | null;
   away_pens: number | null;
   venue: string;
+  timezone: string | null;
+  time_tbd: boolean;
   is_conference: boolean;
   stage: MatchStage;
   bracket_slot: string | null;
@@ -112,6 +116,7 @@ function toTeam(row: TeamRow): Team {
     abbr: row.abbr,
     location: row.location,
     venue: row.venue,
+    timezone: row.timezone,
     isConference: row.is_conference,
     logoUrl: row.logo_url,
   };
@@ -135,6 +140,9 @@ function toMatch(row: MatchRow, teams: Map<string, Team>): Match {
     home: side(row.home_slug, row.home_placeholder, row.home_score, row.home_pens),
     away: side(row.away_slug, row.away_placeholder, row.away_score, row.away_pens),
     venue: row.venue,
+    // Always a real zone, so nothing downstream has to carry a fallback.
+    timezone: row.timezone ?? (row.home_slug ? teams.get(row.home_slug)?.timezone : null) ?? FALLBACK_TZ,
+    timeTbd: row.time_tbd,
     isConference: row.is_conference,
     stage: row.stage,
     bracketSlot: row.bracket_slot,
@@ -156,7 +164,7 @@ export const getSeasonData = cache(async (): Promise<SeasonData> => {
     readAll<TeamRow>((from, to) =>
       db
         .from("teams")
-        .select("slug, name, full_name, nickname, abbr, primary_color, secondary_color, location, venue, is_conference, logo_url")
+        .select("slug, name, full_name, nickname, abbr, primary_color, secondary_color, location, venue, timezone, is_conference, logo_url")
         .order("slug")
         .range(from, to),
     ),
@@ -164,7 +172,7 @@ export const getSeasonData = cache(async (): Promise<SeasonData> => {
       db
         .from("matches")
         .select(
-          "id, date, finished_at, status, minute, home_slug, away_slug, home_placeholder, away_placeholder, home_score, away_score, home_pens, away_pens, venue, is_conference, stage, bracket_slot, attendance, referee, video_url, boxscore_url, recap_url",
+          "id, date, finished_at, status, minute, home_slug, away_slug, home_placeholder, away_placeholder, home_score, away_score, home_pens, away_pens, venue, timezone, time_tbd, is_conference, stage, bracket_slot, attendance, referee, video_url, boxscore_url, recap_url",
         )
         .eq("season", SEASON)
         .order("date")

@@ -1,4 +1,3 @@
-import { dayKey } from "@/lib/season";
 import type { SeasonData } from "@/lib/season-data";
 import {
   compareByForm,
@@ -147,21 +146,23 @@ export function recordForSplit(row: StandingsRow, split: StandingsSplit): Record
 
 export type DayGroup = {
   key: string;
-  /** Kickoff of the first match that day, for heading formatting. */
-  iso: string;
   matches: Match[];
 };
 
-export function groupMatchesByDate(list: Match[]): DayGroup[] {
+/**
+ * `dayOf` is injected because which day a match falls on depends on the zone
+ * it is read in, which only the browser knows. See `matchDayKey`.
+ */
+export function groupMatchesByDate(list: Match[], dayOf: (match: Match) => string): DayGroup[] {
   const groups = new Map<string, DayGroup>();
 
   for (const match of [...list].sort((a, b) => a.date.localeCompare(b.date))) {
-    const key = dayKey(match.date);
+    const key = dayOf(match);
     const group = groups.get(key);
     if (group) {
       group.matches.push(match);
     } else {
-      groups.set(key, { key, iso: match.date, matches: [match] });
+      groups.set(key, { key, matches: [match] });
     }
   }
 
@@ -182,4 +183,18 @@ export function competitionLabel(match: Match, long = false): string {
     default:
       return match.isConference ? (long ? "CCIW Conference" : "CCIW") : "Non-conference";
   }
+}
+
+/**
+ * Trims a match to what a list row renders. The whole season crosses to the
+ * browser on /matches so it can be regrouped in the reader's zone, and these
+ * four fields are only ever read on a match's own page.
+ */
+export function slimForList(match: Match): Match {
+  const slim = { ...match };
+  delete slim.video;
+  delete slim.boxscoreUrl;
+  delete slim.recapUrl;
+  delete slim.lineups;
+  return slim;
 }

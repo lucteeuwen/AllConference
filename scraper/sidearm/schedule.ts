@@ -1,5 +1,6 @@
 import type { MatchStatus } from "@/lib/types";
-import { centralToUtc, cleanText } from "../normalize";
+import { CONFERENCE_TZ } from "../config";
+import { cleanText, wallClockToUtc } from "../normalize";
 
 /**
  * SIDEARM's scoreboard component feed:
@@ -36,7 +37,9 @@ export type RawGame = {
   sourceSchool: string;
   sourceBaseUrl: string;
   gameId: number;
-  /** UTC instant; TBA games fall back to Central midnight of the listed day. */
+  /** UTC instant. With no time published this is noon at the source school, a
+   * day anchor rather than a kickoff: far enough from either date boundary that
+   * the day still reads correctly in every reader's zone. */
   date: string;
   timeTbd: boolean;
   status: MatchStatus;
@@ -108,6 +111,12 @@ export function parseScoreboard(
   sourceSchool: string,
   sourceBaseUrl: string,
   seasonStart: string,
+  /**
+   * The zone this feed's naive `date` strings are written in. SIDEARM renders
+   * them in the wall clock of the site being read, not of the venue, so this is
+   * the source school's own zone -- Central for all nine members today.
+   */
+  sourceTz: string = CONFERENCE_TZ,
 ): RawGame[] {
   const out: RawGame[] = [];
 
@@ -141,7 +150,7 @@ export function parseScoreboard(
       gameId: game.id,
       date: game.date_utc
         ? new Date(game.date_utc.replace(/(\.\d{3})\d+/, "$1")).toISOString()
-        : centralToUtc(game.date),
+        : wallClockToUtc(`${game.date.slice(0, 10)}T12:00:00`, sourceTz),
       timeTbd: game.tbd || !game.date_utc,
       status,
       indicator,

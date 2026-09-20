@@ -1,6 +1,7 @@
 import type { MatchStage, MatchStatus } from "@/lib/types";
 import { SEASON } from "./config";
 import { abbreviate, centralDay, cleanText, shortName, slugify } from "./normalize";
+import { zoneForLocation } from "./timezones";
 import type { RawGame, RawRound } from "./sidearm/schedule";
 
 export type TeamRow = {
@@ -8,7 +9,10 @@ export type TeamRow = {
   name: string;
   full_name: string;
   abbr: string;
+  location: string;
   venue: string;
+  /** IANA zone of the school's own ground; null for one we could not place. */
+  timezone: string | null;
   is_conference: boolean;
   sidearm_base_url: string | null;
   sidearm_sport_id: number | null;
@@ -22,6 +26,8 @@ export type NewTeam = {
   name: string;
   full_name: string;
   abbr: string;
+  location: string;
+  timezone: string | null;
   is_conference: false;
   logoSource: string | null;
 };
@@ -40,6 +46,10 @@ export type MatchRecord = {
   home_pens: number | null;
   away_pens: number | null;
   venue: string;
+  /** IANA zone of this game's ground; null means "the home side's own zone". */
+  timezone: string | null;
+  /** No kickoff published yet: `date` is a day anchor, not a time. */
+  time_tbd: boolean;
   is_conference: boolean;
   stage: MatchStage;
   bracket_slot: string | null;
@@ -51,7 +61,6 @@ export type MatchRecord = {
   /** Not stored: CCIW tournament games still need a round and a slot. */
   cciw?: boolean;
   round?: RawRound | null;
-  timeTbd?: boolean;
 };
 
 /** Maps the many spellings in the feeds onto team slugs. */
@@ -74,7 +83,8 @@ export class TeamResolver {
     return this.teams.some((team) => team.slug === slug && team.is_conference);
   }
 
-  resolve(name: string, logo: string | null): string {
+  /** `homeCity` is the opponent's own "City, St.", and only when they host. */
+  resolve(name: string, logo: string | null, homeCity?: string): string {
     const clean = cleanText(name);
     const known = this.byAlias.get(clean.toLowerCase());
     if (known) {
@@ -87,11 +97,14 @@ export class TeamResolver {
     const short = shortName(clean);
     const slug = slugify(short);
     if (!this.byAlias.has(`slug:${slug}`)) {
+      const city = cleanText(homeCity);
       this.created.set(slug, {
         slug,
         name: short,
         full_name: clean,
         abbr: abbreviate(clean),
+        location: city,
+        timezone: city ? zoneForLocation(city) : null,
         is_conference: false,
         logoSource: logo,
       });
@@ -104,6 +117,15 @@ export class TeamResolver {
 
   venueFor(slug: string): string {
     return this.teams.find((team) => team.slug === slug && team.is_conference)?.venue ?? "";
+  }
+
+  /** The school's own zone, including one created earlier in this run. */
+  zoneFor(slug: string): string | null {
+    return (
+      this.teams.find((team) => team.slug === slug)?.timezone ??
+      this.created.get(slug)?.timezone ??
+      null
+    );
   }
 }
 
@@ -142,7 +164,12 @@ export function mergeGames(raws: RawGame[], resolver: TeamResolver): {
       placeholders.push(raw);
       continue;
     }
-    const opponentSlug = resolver.resolve(raw.opponentName, raw.opponentImage);
+    // On the road, the feed's location is the opponent's own city.
+    const opponentSlug = resolver.resolve(
+      raw.opponentName,
+      raw.opponentImage,
+      raw.indicator === "A" ? raw.location : undefined,
+    );
     if (opponentSlug === raw.sourceSchool) continue;
     const pair = [raw.sourceSchool, opponentSlug].sort().join("|");
     // Kind stays out of the key: one school may tag a tournament game that
@@ -177,9 +204,20 @@ export function mergeGames(raws: RawGame[], resolver: TeamResolver): {
 
     const date = primary.timeTbd && secondary && !secondary.timeTbd ? secondary.date : primary.date;
     const location = cleanText(primary.location);
-    const venue =
-      resolver.venueFor(home) ||
-      (location && !/^(home|tba|tbd)$/i.test(location) ? location : "");
+    const named = location && !/^(home|tba|tbd)$/i.test(location) ? location : "";
+    // At a neutral site nobody is playing at their own ground, and "home" is
+    // only whichever record we read first -- so the feed's location is the
+    // venue. Naming the home side's stadium there put a Wheaton ground in
+    // Colorado, which the match page's venue-time row makes plain to see.
+    const venue = (primary.indicator === "N" ? "" : resolver.venueFor(home)) || named;
+
+    // Only worth storing when the ground is not the home side's own: a neutral
+    // site, or an opponent whose own zone we may never have placed. Null means
+    // "read the home team's zone", which is right for every member's ground.
+    const timezone =
+      primary.indicator === "N" || !resolver.isConference(home)
+        ? (zoneForLocation(named) ?? resolver.zoneFor(home))
+        : null;
 
     const bothConference = resolver.isConference(home) && resolver.isConference(away);
     const kind = records.some((record) => record.kind === "cciw")
@@ -189,6 +227,9 @@ export function mergeGames(raws: RawGame[], resolver: TeamResolver): {
         : "regular";
 
     matches.push({
+      // The id's day is the CONFERENCE's day, deliberately. It is embedded in
+      // every /matches/<id> URL and in bracket_slots.match_id, so it must never
+      // follow a reader's zone.
       id: `${centralDay(date)}-${home}-${away}`,
       season: SEASON,
       date,
@@ -202,6 +243,8 @@ export function mergeGames(raws: RawGame[], resolver: TeamResolver): {
       home_pens: homePens,
       away_pens: awayPens,
       venue,
+      timezone,
+      time_tbd: primary.timeTbd && (!secondary || secondary.timeTbd),
       is_conference: kind === "regular" && bothConference,
       stage: kind === "ncaa" ? "ncaa" : "regular",
       bracket_slot: null,
@@ -211,7 +254,6 @@ export function mergeGames(raws: RawGame[], resolver: TeamResolver): {
       source_school: primary.sourceSchool,
       source_game_id: primary.gameId,
       cciw: kind === "cciw" && bothConference,
-      timeTbd: primary.timeTbd && (!secondary || secondary.timeTbd),
     });
   }
 

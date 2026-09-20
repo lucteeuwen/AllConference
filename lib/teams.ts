@@ -11,6 +11,7 @@ export const TBC_TEAM: Team = {
   abbr: "TBC",
   location: "",
   venue: "",
+  timezone: null,
   isConference: false,
   logoUrl: null,
 };

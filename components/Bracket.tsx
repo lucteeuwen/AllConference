@@ -1,7 +1,7 @@
 import Link from "next/link";
+import { LocalTime } from "@/components/LocalTime";
 import { TeamBadge } from "@/components/TeamBadge";
 import { winnerOf } from "@/components/broadcast/MatchRow";
-import { formatKickoff, formatShortDate } from "@/lib/format";
 import { TBC_TEAM } from "@/lib/teams";
 import type { Bracket as BracketData, BracketSlot, BracketSlotId, Match, Team } from "@/lib/types";
 
@@ -81,13 +81,15 @@ function SlotCard({
   teams: Map<string, Team>;
 }) {
   const lines = linesFor(slot, match, bracket, teams);
-  const status = !match
-    ? "Date TBA"
-    : match.status === "final"
-      ? "Full time"
-      : match.status === "live"
-        ? "Live"
-        : `${formatShortDate(match.date)} · ${formatKickoff(match.date)}`;
+  const status = !match ? (
+    "Date TBA"
+  ) : match.status === "final" ? (
+    "Full time"
+  ) : match.status === "live" ? (
+    "Live"
+  ) : (
+    <LocalTime match={match} format="shortTime" />
+  );
 
   const body = (
     <>
