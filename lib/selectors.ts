@@ -140,6 +140,14 @@ export function displayStandings(lines: StandingsLine[]): StandingsLine[] {
     .map((line, index) => ({ ...line, rank: index + 1 }));
 }
 
+/**
+ * What every standings table shows: which order and which record. The home page
+ * and the Standings page both read it from here so their numbers can't differ.
+ */
+export function tableView(lines: StandingsLine[]): { started: boolean; lines: StandingsLine[] } {
+  return { started: conferenceStarted(lines), lines: displayStandings(lines) };
+}
+
 export function recordForSplit(row: StandingsRow, split: StandingsSplit): RecordLine {
   return split === "home" ? row.home : split === "away" ? row.away : row.conference;
 }

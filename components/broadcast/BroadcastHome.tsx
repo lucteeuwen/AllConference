@@ -12,10 +12,12 @@ import { LocalTime } from "@/components/LocalTime";
 import { TeamBadge } from "@/components/TeamBadge";
 import { buildRailTiles } from "@/lib/rail";
 import { timingOf } from "@/lib/hero";
-import { competitionLabel, displayStandings } from "@/lib/selectors";
+import { competitionLabel, tableView } from "@/lib/selectors";
 import type { HomeData } from "@/lib/home";
 
 export function BroadcastHome({ data }: { data: HomeData }) {
+  const table = tableView(data.standings);
+
   // 13 tiles: the six matches before the next one, the next one, and six after.
   const { tiles, centerIndex } = buildRailTiles(data.matches, data.standings, 13, data.renderedAt);
 
@@ -113,8 +115,8 @@ export function BroadcastHome({ data }: { data: HomeData }) {
       <div className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
         <Reveal>
           <section>
-            <SectionHeader title="Conference table" action="Full table" href="/standings" />
-            <StandingsSnippet standings={displayStandings(data.standings)} />
+            <SectionHeader title="Standings" action="Full standings" href="/standings" />
+            <StandingsSnippet standings={table.lines} conferenceStarted={table.started} />
           </section>
         </Reveal>
 

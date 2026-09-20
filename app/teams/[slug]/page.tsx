@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BackButton } from "@/components/BackButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { WashHero } from "@/components/broadcast/WashHero";
 import { OverlapCard } from "@/components/broadcast/OverlapCard";
 import { TeamMatchList } from "@/components/matches/TeamMatchList";
@@ -93,9 +94,12 @@ export default async function TeamPage({ params, searchParams }: Props) {
                 <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </BackButton>
-            <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
-              {SEASON_LABEL}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
+                {SEASON_LABEL}
+              </span>
+              <ThemeToggle tone="onDark" className="md:hidden" />
+            </div>
           </div>
 
           <div className="slide-from-left flex flex-col items-center gap-3">
