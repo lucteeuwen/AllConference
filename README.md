@@ -92,6 +92,10 @@ logos) and GitHub Actions (scraper; unlimited minutes on a public repo).
    before the first build: the logo host in `next.config.ts` and the
    `NEXT_PUBLIC_*` values are read at build time. Do **not** add the service
    role key; the site never uses it.
+4. **Analytics**: the site already includes Vercel Web Analytics and Speed
+   Insights. Turn each on once under the project's **Analytics** and **Speed
+   Insights** tabs in the Vercel dashboard, then redeploy. Neither needs env
+   vars or a cookie banner, and they only report from the deployed site.
 
 Things to know:
 
