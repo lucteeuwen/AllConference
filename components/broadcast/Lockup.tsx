@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { LogoMark } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type Props = {
   title: string;
@@ -27,6 +28,8 @@ export function Lockup({ title, subtitle, aside, children }: Props) {
           ) : null}
         </div>
         {aside ? <div className="shrink-0">{aside}</div> : null}
+        {/* Phones have no top nav, so the toggle lives in this band instead. */}
+        <ThemeToggle tone="onDark" className="shrink-0 md:hidden" />
       </div>
       {children ? <div className="mt-4">{children}</div> : null}
     </div>

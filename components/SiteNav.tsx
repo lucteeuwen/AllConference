@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoTile } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import type { ReactNode } from "react";
 
 type NavItem = {
@@ -102,6 +103,7 @@ export function SiteNav() {
               </Link>
             ))}
           </nav>
+          <ThemeToggle tone="onDark" className="ml-auto" />
         </div>
       </header>
 

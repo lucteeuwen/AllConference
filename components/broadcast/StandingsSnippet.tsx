@@ -3,40 +3,50 @@ import { TeamBadge } from "@/components/TeamBadge";
 import { ExpandableRows } from "@/components/ExpandableRows";
 import { FormDots } from "@/components/FormDots";
 import { played } from "@/lib/selectors";
+import { recordFor } from "@/lib/standings";
 import type { HomeData } from "@/lib/home";
 
-/** Compact table used on the home page and alongside the match tabs. */
+/**
+ * The home page's compact standings. Its numbers come from the same `recordFor`
+ * call as the Standings page's default view: every game played so far until the
+ * first conference match, the conference record after.
+ */
 export function StandingsSnippet({
   standings,
+  conferenceStarted,
   limit = 6,
 }: {
   standings: HomeData["standings"];
+  conferenceStarted: boolean;
   limit?: number;
 }) {
   return (
     <div className="bc-card bc-flush overflow-hidden">
-      {standings.slice(0, limit).map((line) => (
-        <Link
-          key={line.team.slug}
-          href={`/teams/${line.team.slug}`}
-          className="bc-row flex items-center gap-3 border-b border-line px-4 transition last:border-0 hover:bg-ground"
-        >
-          <span className="w-4 text-[0.75rem] font-black text-ink-faint tabular-nums">
-            {line.rank}
-          </span>
-          <TeamBadge team={line.team} size="xs" />
-          <span className="min-w-0 flex-1 truncate text-[0.82rem] font-bold text-ink">
-            {line.team.name}
-          </span>
-          <FormDots form={line.row.form} />
-          <span className="w-14 text-right text-[0.75rem] text-ink-muted tabular-nums">
-            {played(line.row.conference)} GP
-          </span>
-          <span className="w-8 text-right text-[0.9rem] font-black text-ink tabular-nums">
-            {line.row.conference.pts}
-          </span>
-        </Link>
-      ))}
+      {standings.slice(0, limit).map((line) => {
+        const record = recordFor(line.row, "all", conferenceStarted);
+        return (
+          <Link
+            key={line.team.slug}
+            href={`/teams/${line.team.slug}`}
+            className="bc-row flex items-center gap-3 border-b border-line px-4 transition last:border-0 hover:bg-ground"
+          >
+            <span className="w-4 text-[0.75rem] font-black text-ink-faint tabular-nums">
+              {line.rank}
+            </span>
+            <TeamBadge team={line.team} size="xs" />
+            <span className="min-w-0 flex-1 truncate text-[0.82rem] font-bold text-ink">
+              {line.team.name}
+            </span>
+            <FormDots form={line.row.form} />
+            <span className="w-14 text-right text-[0.75rem] text-ink-muted tabular-nums">
+              {played(record)} GP
+            </span>
+            <span className="w-8 text-right text-[0.9rem] font-black text-ink tabular-nums">
+              {record.pts}
+            </span>
+          </Link>
+        );
+      })}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { ScorersSnippet } from "@/components/broadcast/StandingsSnippet";
 import { StandingsTable, type StandingsEntry } from "@/components/StandingsTable";
 import { Reveal } from "@/components/broadcast/Reveal";
 import { Bracket } from "@/components/Bracket";
-import { conferenceStarted, displayStandings, getGoalScorers, standingsLines } from "@/lib/selectors";
+import { getGoalScorers, standingsLines, tableView } from "@/lib/selectors";
 import { SEASON_LABEL } from "@/lib/season";
 import { getSeasonData } from "@/lib/season-data";
 
@@ -16,9 +16,8 @@ export const revalidate = 60;
 
 export default async function StandingsPage() {
   const data = await getSeasonData();
-  const lines = standingsLines(data);
-  const started = conferenceStarted(lines);
-  const entries: StandingsEntry[] = displayStandings(lines).map(({ row, team }) => ({ row, team }));
+  const { started, lines } = tableView(standingsLines(data));
+  const entries: StandingsEntry[] = lines.map(({ row, team }) => ({ row, team }));
   const scorers = getGoalScorers(data);
 
   return (

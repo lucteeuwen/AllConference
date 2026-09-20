@@ -1,0 +1,23 @@
+name: Keep Supabase awake
+
+on:
+  schedule:
+    # The scraper only runs Aug–Nov, and a free Supabase project pauses after
+    # a week without activity. One tiny read a week keeps it running all year.
+    - cron: "0 12 * * 1"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Read one row
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          curl --fail --silent --show-error \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            "$SUPABASE_URL/rest/v1/teams?select=id&limit=1" > /dev/null

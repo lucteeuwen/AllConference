@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BackButton } from "@/components/BackButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { DetailRow } from "@/components/DetailRow";
 import { KickoffRows, KickoffValue } from "@/components/matches/KickoffRows";
 import { WashHero } from "@/components/broadcast/WashHero";
@@ -170,9 +171,12 @@ export default async function MatchPage({ params, searchParams }: Props) {
                 <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </BackButton>
-            <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
-              {competitionLabel(match, true)}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
+                {competitionLabel(match, true)}
+              </span>
+              <ThemeToggle tone="onDark" className="md:hidden" />
+            </div>
           </div>
 
           <p className="bc-label text-[0.8rem] text-white/70 md:text-[0.92rem]">

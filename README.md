@@ -78,6 +78,31 @@ npm run dev
 to November, and with `--rosters` once a day. It needs the repository secrets
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
 
+## Deploying
+
+Everything runs on free tiers: Vercel Hobby (site), Supabase Free (database and
+logos) and GitHub Actions (scraper; unlimited minutes on a public repo).
+
+1. **Supabase**: `npm run db:push` applies the migrations to the linked project.
+2. **GitHub**: add the repository secrets `SUPABASE_URL` and
+   `SUPABASE_SERVICE_ROLE_KEY`, then run the *Scrape CCIW data* workflow once
+   by hand with **rosters** ticked for the first import.
+3. **Vercel**: import the repo, set the production branch to `main`, and add
+   `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Add them
+   before the first build: the logo host in `next.config.ts` and the
+   `NEXT_PUBLIC_*` values are read at build time. Do **not** add the service
+   role key; the site never uses it.
+
+Things to know:
+
+- Vercel Hobby is for non-commercial use only.
+- `keepalive.yml` reads one row a week so Supabase doesn't pause the project
+  between seasons. GitHub also turns off scheduled workflows in a public repo
+  after 60 days without a commit; if that happens, re-enable them under
+  Actions.
+- Pages are cached for 60 seconds, but data is only as fresh as the scraper:
+  about 15 minutes normally and 2 to 3 minutes while a match is on.
+
 ## Database
 
 `supabase/migrations` holds the schema and the conference seed data (teams,
