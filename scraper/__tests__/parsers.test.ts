@@ -3,10 +3,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { classifyVideo } from "@/lib/video";
 import { mergeGames, TeamResolver, type TeamRow } from "../merge";
-import { centralToUtc, clockToMinute, firstLast, shortName } from "../normalize";
+import { centralToUtc, clockToMinute, firstLast, shortName, wallClockToUtc } from "../normalize";
 import { parseBoxScore } from "../sidearm/boxscore";
 import { parsePosition, parseRoster, parseStats } from "../sidearm/roster";
 import { parsePens, parseScoreboard, type SidearmGame } from "../sidearm/schedule";
+import { isSplitZoneState, zoneForLocation } from "../timezones";
 import { buildBracket, type SlotRow } from "../tournament";
 
 const fixture = (name: string) => readFileSync(join(__dirname, "fixtures", name), "utf8");
@@ -23,7 +24,9 @@ const team = (slug: string, name: string, aliases: string[], venue = ""): TeamRo
   name,
   full_name: aliases[0] ?? name,
   abbr: slug.slice(0, 3).toUpperCase(),
+  location: "",
   venue,
+  timezone: "America/Chicago",
   is_conference: true,
   sidearm_base_url: `https://${slug}.example`,
   sidearm_sport_id: 1,
@@ -106,7 +109,7 @@ describe("scoreboard feed", () => {
     expect(games.filter((game) => game.kind === "cciw")).toHaveLength(3);
     const tba = games.find((game) => game.placeholderRound === "quarterfinal");
     expect(tba?.timeTbd).toBe(true);
-    expect(tba?.date).toBe("2026-10-31T05:00:00.000Z");
+    expect(tba?.date).toBe("2026-10-31T17:00:00.000Z");
   });
 
   it("drops other teams' games at a hosted tournament", () => {
@@ -175,7 +178,8 @@ describe("bracket", () => {
     const seeds = { 1: "wheaton", 2: "illinois-wesleyan", 3: "north-central", 4: "north-park", 5: "carroll", 6: "carthage" };
     const base = {
       season: 2026, home_placeholder: null, away_placeholder: null, home_pens: null, away_pens: null,
-      venue: "", is_conference: false, stage: "regular" as const, bracket_slot: null, video_url: null,
+      venue: "", timezone: null, time_tbd: false, is_conference: false,
+      stage: "regular" as const, bracket_slot: null, video_url: null,
       boxscore_url: null, recap_url: null, source_game_id: 1, cciw: true,
     };
     const qf1 = { ...base, id: "qf1", date: "2026-10-31T19:00:00.000Z", status: "final" as const, home_slug: "north-central", away_slug: "carthage", home_score: 1, away_score: 1, home_pens: 3, away_pens: 4, source_school: "north-central" };
@@ -290,5 +294,47 @@ describe("box score placeholder players", () => {
   it("reads a blank player (printed as 0) as unknown, not as a name", () => {
     const { events } = parseBoxScore(html);
     expect(events.map((event) => event.playerName)).toEqual(["Unknown", "Ryan Clark", "Unknown", "Micah Amega"]);
+  });
+});
+
+describe("venue time zones", () => {
+  it("places a city from the feed's AP-style state", () => {
+    expect(zoneForLocation("Chicago, Ill.")).toBe("America/Chicago");
+    expect(zoneForLocation("Milwaukee, Wis.")).toBe("America/Chicago");
+    expect(zoneForLocation("Cedar Rapids, Iowa")).toBe("America/Chicago");
+    expect(zoneForLocation("Columbus, Ohio")).toBe("America/New_York");
+    expect(zoneForLocation("Boulder, Colo.")).toBe("America/Denver");
+    expect(zoneForLocation("Wheaton, IL")).toBe("America/Chicago");
+  });
+
+  it("corrects the cities that sit in their state's minority zone", () => {
+    // Porter and Lake counties keep Chicago's clock; South Bend does not.
+    expect(zoneForLocation("Valparaiso, Ind.")).toBe("America/Chicago");
+    expect(zoneForLocation("Hammond, Ind.")).toBe("America/Chicago");
+    expect(zoneForLocation("South Bend, Ind.")).toBe("America/Indiana/Indianapolis");
+    expect(zoneForLocation("Grand Rapids, Mich.")).toBe("America/Detroit");
+    expect(zoneForLocation("Menominee, Mich.")).toBe("America/Chicago");
+  });
+
+  it("says it does not know rather than guessing", () => {
+    expect(zoneForLocation("Somewhere, Zz.")).toBeNull();
+    expect(zoneForLocation("TBA")).toBeNull();
+    expect(zoneForLocation("")).toBeNull();
+  });
+
+  it("flags the states where a city we have not listed could be wrong", () => {
+    expect(isSplitZoneState("Somewhere, Ind.")).toBe(true);
+    expect(isSplitZoneState("Somewhere, Ill.")).toBe(false);
+  });
+});
+
+describe("wall clock to UTC", () => {
+  it("reads a naive time in the zone it was written in", () => {
+    expect(wallClockToUtc("2026-10-31T19:00:00", "America/New_York")).toBe("2026-10-31T23:00:00.000Z");
+    expect(wallClockToUtc("2026-10-31T19:00:00", "America/Chicago")).toBe("2026-11-01T00:00:00.000Z");
+  });
+
+  it("still answers for Central through the old name", () => {
+    expect(centralToUtc("2026-10-31T12:00:00")).toBe("2026-10-31T17:00:00.000Z");
   });
 });

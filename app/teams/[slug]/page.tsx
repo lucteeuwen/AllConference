@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BackButton } from "@/components/BackButton";
-import { EarlierMatches } from "@/components/EarlierMatches";
 import { WashHero } from "@/components/broadcast/WashHero";
 import { OverlapCard } from "@/components/broadcast/OverlapCard";
-import { MatchRow } from "@/components/broadcast/MatchRow";
+import { TeamMatchList } from "@/components/matches/TeamMatchList";
 import { ScoreboardRail } from "@/components/broadcast/ScoreboardRail";
 import { Tabs } from "@/components/Tabs";
 import { TeamBadge } from "@/components/TeamBadge";
 import { FormDots } from "@/components/FormDots";
 import { buildRailTiles } from "@/lib/rail";
-import { SEASON_LABEL, dayKey, todayKey } from "@/lib/season";
+import { SEASON_LABEL } from "@/lib/season";
 import { recordFor } from "@/lib/standings";
+import { renderedAt } from "@/lib/rendered-at";
 import { getSeasonData } from "@/lib/season-data";
 import {
   conferenceStarted,
@@ -76,11 +76,6 @@ export default async function TeamPage({ params, searchParams }: Props) {
   const fixtures = matchesForTeam(data, slug);
   const { tiles, centerIndex } = buildRailTiles(fixtures, standings, 14);
 
-  // Like the Matches page: the list starts today, earlier days sit behind a button.
-  const today = todayKey();
-  const past = fixtures.filter((match) => dayKey(match.date) < today);
-  const current = fixtures.filter((match) => dayKey(match.date) >= today);
-  const splitAtToday = current.length > 0;
   const base = `/teams/${slug}?tab=matches`;
 
   const tabs = [
@@ -235,35 +230,12 @@ export default async function TeamPage({ params, searchParams }: Props) {
           </div>
         ) : (
           <div className="[overflow-anchor:none]">
-            {fixtures.length === 0 ? null : splitAtToday ? (
-              <div className="space-y-7">
-                {past.length > 0 ? (
-                  <EarlierMatches
-                    count={past.length}
-                    open={showPast}
-                    openHref={`${base}&past=1`}
-                    closeHref={base}
-                  >
-                    <div className="space-y-2.5">
-                      {past.map((match) => (
-                        <MatchRow key={match.id} match={match} showDate />
-                      ))}
-                    </div>
-                  </EarlierMatches>
-                ) : null}
-                <div className="space-y-2.5">
-                  {current.map((match) => (
-                    <MatchRow key={match.id} match={match} showDate />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {[...fixtures].reverse().map((match) => (
-                  <MatchRow key={match.id} match={match} showDate />
-                ))}
-              </div>
-            )}
+            <TeamMatchList
+              fixtures={fixtures}
+              showPast={showPast}
+              base={base}
+              renderedAt={renderedAt()}
+            />
           </div>
         )}
       </div>

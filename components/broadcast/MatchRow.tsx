@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { TeamBadge } from "@/components/TeamBadge";
-import { formatKickoff, formatShortDate } from "@/lib/format";
+import { LocalTime } from "@/components/LocalTime";
 import { competitionLabel } from "@/lib/selectors";
 import type { Match, MatchSide } from "@/lib/types";
 
@@ -30,7 +30,7 @@ export function StatusPill({ match, showDate = false }: { match: Match; showDate
   }
   return (
     <span className="bc-label shrink-0 rounded-control bg-accent-soft px-2.5 py-1 text-[0.68rem] whitespace-nowrap text-accent">
-      {showDate ? formatShortDate(match.date) : formatKickoff(match.date)}
+      <LocalTime match={match} format={showDate ? "short" : "time"} />
     </span>
   );
 }
@@ -69,7 +69,12 @@ export function MatchRow({ match, showDate = false }: { match: Match; showDate?:
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="bc-label truncate text-[0.68rem] text-ink-faint">
-          {showDate && match.status !== "scheduled" ? `${formatShortDate(match.date)} · ` : ""}
+          {showDate && match.status !== "scheduled" ? (
+            <>
+              <LocalTime match={match} format="short" />
+              {" · "}
+            </>
+          ) : null}
           {competitionLabel(match)}
           {match.venue ? ` · ${match.venue}` : ""}
         </span>
@@ -106,7 +111,7 @@ export function MatchRow({ match, showDate = false }: { match: Match; showDate?:
                 ? "PPD"
                 : match.status === "canceled"
                   ? "—"
-                  : formatKickoff(match.date)}
+                  : <LocalTime match={match} />}
             </span>
           )}
         </span>

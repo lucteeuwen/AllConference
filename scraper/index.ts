@@ -9,6 +9,7 @@ import { slugify } from "./normalize";
 import { parseBoxScore, type BoxSide } from "./sidearm/boxscore";
 import { parseRoster, parseStats, rosterUrl, statsUrl } from "./sidearm/roster";
 import { parseScoreboard, scoreboardUrl, type RawGame, type SidearmGame } from "./sidearm/schedule";
+import { isSplitZoneState } from "./timezones";
 import { buildBracket, type SlotRow } from "./tournament";
 
 /**
@@ -66,7 +67,7 @@ async function loadTeams(db: SupabaseClient): Promise<TeamRow[]> {
     db
       .from("teams")
       .select(
-        "slug, name, full_name, abbr, venue, is_conference, sidearm_base_url, sidearm_sport_id, aliases, logo_url, logo_source_url",
+        "slug, name, full_name, abbr, location, venue, timezone, is_conference, sidearm_base_url, sidearm_sport_id, aliases, logo_url, logo_source_url",
       ),
     "load teams",
   );
@@ -118,6 +119,14 @@ async function syncMatches(ctx: Context): Promise<void> {
   const newTeams = [...resolver.created.values()].filter(
     (team) => !ctx.teams.some((known) => known.slug === team.slug),
   );
+  // A state with counties in two zones that we could not place by city gets the
+  // state's dominant zone, which may be wrong. Surface it so scraper/timezones.ts
+  // grows from real fixtures rather than guesses.
+  for (const team of newTeams) {
+    if (team.location && isSplitZoneState(team.location)) {
+      note(ctx, `WARN ${team.slug}: "${team.location}" is a split-zone state, assumed ${team.timezone}`);
+    }
+  }
   if (newTeams.length && !options.dryRun) {
     await must(
       ctx.db.from("teams").upsert(
@@ -126,6 +135,8 @@ async function syncMatches(ctx: Context): Promise<void> {
           name: team.name,
           full_name: team.full_name,
           abbr: team.abbr,
+          location: team.location,
+          timezone: team.timezone,
           is_conference: false,
         })),
         { onConflict: "slug", ignoreDuplicates: true },
@@ -176,7 +187,6 @@ async function syncMatches(ctx: Context): Promise<void> {
     const row = { ...match };
     delete row.cciw;
     delete row.round;
-    delete row.timeTbd;
     const before = ctx.existing.get(match.id);
     let finishedAt = before?.finished_at ?? null;
     if (match.status === "final" && !finishedAt) {
@@ -428,7 +438,7 @@ async function syncRosters(ctx: Context): Promise<void> {
 function activeMatches(ctx: Context, now = Date.now()): MatchRecord[] {
   return ctx.matches.filter((match) => {
     if (match.status === "live") return true;
-    if (match.status !== "scheduled" || match.timeTbd) return false;
+    if (match.status !== "scheduled" || match.time_tbd) return false;
     const kickoff = new Date(match.date).getTime();
     return now >= kickoff - LIVE.leadMs && now <= kickoff + LIVE.tailMs;
   });

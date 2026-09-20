@@ -8,7 +8,11 @@ import type { Match } from "@/lib/types";
 export type CompetitionFilter = "all" | "conference" | "non-conference";
 
 export type MatchFilters = {
-  /** A YYYY-MM-DD day key, or null for the whole season. */
+  /**
+   * A YYYY-MM-DD day key, or null for the whole season. The key is read in the
+   * reader's own zone, so a shared link can land on a different day for
+   * someone far enough away -- the list says so rather than looking empty.
+   */
   day: string | null;
   competition: CompetitionFilter;
   teamSlugs: string[];
@@ -69,14 +73,14 @@ export function activeFilterCount(filters: MatchFilters): number {
   );
 }
 
-/** `dayOf` is injected so this stays free of the season module's clock. */
+/** `dayOf` is injected because a match's day depends on the reader's zone. */
 export function applyFilters(
   list: Match[],
   filters: MatchFilters,
-  dayOf: (iso: string) => string,
+  dayOf: (match: Match) => string,
 ): Match[] {
   return list.filter((match) => {
-    if (filters.day && dayOf(match.date) !== filters.day) return false;
+    if (filters.day && dayOf(match) !== filters.day) return false;
 
     // The CCIW tournament counts as conference play for filtering.
     const conference = match.isConference || ["quarterfinal", "semifinal", "final"].includes(match.stage);

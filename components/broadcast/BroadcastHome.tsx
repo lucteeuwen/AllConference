@@ -8,9 +8,9 @@ import { AutoRefresh, HeroStatus, HeroWindow } from "@/components/broadcast/Hero
 import { ScoreboardRail } from "@/components/broadcast/ScoreboardRail";
 import { ScorersSnippet, StandingsSnippet } from "@/components/broadcast/StandingsSnippet";
 import { Reveal } from "@/components/broadcast/Reveal";
+import { LocalTime } from "@/components/LocalTime";
 import { TeamBadge } from "@/components/TeamBadge";
 import { buildRailTiles } from "@/lib/rail";
-import { formatKickoff, formatShortDate } from "@/lib/format";
 import { timingOf } from "@/lib/hero";
 import { competitionLabel, displayStandings } from "@/lib/selectors";
 import type { HomeData } from "@/lib/home";
@@ -75,7 +75,7 @@ export function BroadcastHome({ data }: { data: HomeData }) {
                   )}
 
                   <p className="bc-label mt-1.5 text-[0.64rem] text-white/55">
-                    {formatShortDate(hero.date)} · {formatKickoff(hero.date)} · {competitionLabel(hero)}
+                    <LocalTime match={hero} format="shortTime" /> · {competitionLabel(hero)}
                   </p>
                 </div>
 
@@ -140,8 +140,12 @@ export function BroadcastHome({ data }: { data: HomeData }) {
                   className="bc-card bc-pad bc-shadow transition hover:border-accent/50"
                 >
                   <p className="bc-label mb-2.5 flex items-center justify-between text-[0.65rem] text-ink-faint">
-                    <span>{formatShortDate(match.date)}</span>
-                    <span>{formatKickoff(match.date)}</span>
+                    <span>
+                      <LocalTime match={match} format="short" />
+                    </span>
+                    <span>
+                      <LocalTime match={match} />
+                    </span>
                   </p>
                   <div className="flex items-center gap-2">
                     <TeamBadge team={matchHome} size="xs" />

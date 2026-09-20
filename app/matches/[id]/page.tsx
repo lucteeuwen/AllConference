@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BackButton } from "@/components/BackButton";
+import { DetailRow } from "@/components/DetailRow";
+import { KickoffRows, KickoffValue } from "@/components/matches/KickoffRows";
 import { WashHero } from "@/components/broadcast/WashHero";
 import { OverlapCard } from "@/components/broadcast/OverlapCard";
 import { Boxscore } from "@/components/broadcast/Boxscore";
@@ -9,7 +11,6 @@ import { MatchVideo } from "@/components/MatchVideo";
 import { TeamBadge } from "@/components/TeamBadge";
 import { TeamComparison } from "@/components/TeamComparison";
 import { Tabs } from "@/components/Tabs";
-import { formatFullDate, formatKickoff } from "@/lib/format";
 import { compareTeams } from "@/lib/comparison";
 import { getCardCounts, getSeasonData, withDetails } from "@/lib/season-data";
 import { verifyVideo } from "@/lib/video-verify";
@@ -75,15 +76,6 @@ function eventLabel(event: MatchEvent): string {
   if (event.type === "own-goal") return "Own goal";
   if (!named) return "Goal";
   return event.assistName && hasName(event.assistName) ? `${player}, assist ${event.assistName}` : player;
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bc-row flex items-baseline justify-between gap-4 border-b border-line last:border-0">
-      <span className="text-[0.78rem] text-ink-muted">{label}</span>
-      <span className="text-right text-[0.78rem] font-semibold text-ink">{value}</span>
-    </div>
-  );
 }
 
 function LineupColumn({ side, lineup }: { side: MatchSide; lineup: Lineup }) {
@@ -219,7 +211,9 @@ export default async function MatchPage({ params, searchParams }: Props) {
                   ) : null}
                 </>
               ) : (
-                <div className="text-2xl font-black text-white">{formatKickoff(match.date)}</div>
+                <div className="text-2xl font-black text-white">
+                  <KickoffValue match={match} />
+                </div>
               )}
               <p className="bc-label mt-1.5 text-[0.64rem] text-white/60">
                 {live ? (match.minute ? `${match.minute}' · In progress` : "In progress") : statusCopy[match.status]}
@@ -241,7 +235,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
             <Boxscore match={match} standings={standings} />
           ) : (
             <div className="grid gap-3 sm:grid-cols-3">
-              <DetailRow label="Kickoff" value={formatKickoff(match.date)} />
+              <DetailRow label="Kickoff" value={<KickoffValue match={match} />} />
               <DetailRow label="Venue" value={match.venue || "TBA"} />
               <DetailRow label="Competition" value={competitionLabel(match)} />
             </div>
@@ -267,7 +261,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
 
             <div className="bc-card bc-pad bc-shadow">
               <h2 className="bc-label mb-2 text-[0.7rem] text-ink-faint">Match facts</h2>
-              <DetailRow label="Kickoff" value={formatFullDate(match.date)} />
+              <KickoffRows match={match} />
               <DetailRow label="Venue" value={match.venue || "TBA"} />
               <DetailRow label="Competition" value={competitionLabel(match, true)} />
               {match.referee ? <DetailRow label="Referee" value={match.referee} /> : null}

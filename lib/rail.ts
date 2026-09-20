@@ -1,5 +1,4 @@
 import type { RailTile } from "@/components/broadcast/ScoreboardRail";
-import { formatKickoff, formatShortDate } from "@/lib/format";
 import type { StandingsLine } from "@/lib/selectors";
 import type { Match } from "@/lib/types";
 
@@ -63,8 +62,9 @@ export function buildRailTiles(
 
     return {
       id: match.id,
-      dateLabel: formatShortDate(match.date),
+      match: { date: match.date, timeTbd: match.timeTbd, timezone: match.timezone },
       live: match.status === "live",
+      // Null leaves the tile to render the kickoff in the reader's own zone.
       status:
         match.status === "live"
           ? match.minute
@@ -74,7 +74,7 @@ export function buildRailTiles(
             ? "Full time"
             : match.status === "postponed"
               ? "PPD"
-              : formatKickoff(match.date),
+              : null,
       note:
         match.stage === "regular"
           ? match.isConference

@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import { LocalTime, type TimedMatch } from "@/components/LocalTime";
 import { TeamBadge } from "@/components/TeamBadge";
 import type { Team } from "@/lib/types";
 
 export type RailTile = {
   id: string;
-  /** e.g. "Oct 3". */
-  dateLabel: string;
-  /** "FINAL", "58'", or a kickoff time. */
-  status: string;
+  /** The raw kickoff, so the tile can render the date in the reader's zone. */
+  match: TimedMatch;
+  /** "Full time", "58'", or null to show the kickoff time. */
+  status: string | null;
   live: boolean;
   note: string;
   home: { team: Team; score: number | null; record: string };
@@ -100,7 +101,9 @@ export function ScoreboardRail({
                 }`}
               >
                 {tile.live ? <span className="live-dot size-1.5 shrink-0 rounded-full bg-live" /> : null}
-                {tile.dateLabel} · {tile.status}
+                <LocalTime match={tile.match} format="short" />
+                {" · "}
+                {tile.status ?? <LocalTime match={tile.match} />}
               </span>
               <span className="truncate text-[10px] font-semibold text-ink-faint uppercase">
                 {tile.note}

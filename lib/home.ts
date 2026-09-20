@@ -1,6 +1,5 @@
-import { dayKey, todayKey } from "@/lib/season";
 import { getSeasonData, withDetails } from "@/lib/season-data";
-import { pickHeroMatch } from "@/lib/hero";
+import { ASSUMED_LENGTH_MS, pickHeroMatch } from "@/lib/hero";
 import { getTopScorers, standingsLines, type ScorerLine, type StandingsLine } from "@/lib/selectors";
 import type { Match } from "@/lib/types";
 
@@ -24,10 +23,12 @@ export async function getHomeData(at?: number): Promise<HomeData> {
   const now = at ?? Date.now();
   const data = await getSeasonData();
   const all = data.matches;
-  const today = todayKey(0, new Date(now));
 
+  // An instant, not a day key: this page is cached for every reader at once,
+  // so it cannot use anyone's calendar. A match drops off the list once it has
+  // had time to finish, rather than lingering until some particular midnight.
   const upcoming = all
-    .filter((match) => match.status === "scheduled" && dayKey(match.date) >= today)
+    .filter((match) => match.status === "scheduled" && Date.parse(match.date) >= now - ASSUMED_LENGTH_MS)
     .slice(0, 6);
 
   const hero = pickHeroMatch(all, now);
