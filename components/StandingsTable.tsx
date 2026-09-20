@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { TeamBadge } from "@/components/TeamBadge";
 import { FormDots } from "@/components/FormDots";
-import type { RecordLine, StandingsRow, StandingsSplit, Team } from "@/lib/types";
+import { SlidingSegments } from "@/components/SlidingSegments";
+import { recordFor, sortEntries, type SortColumn, type SortKey } from "@/lib/standings";
+import type { StandingsRow, StandingsSplit, Team } from "@/lib/types";
 
 export type StandingsEntry = {
   row: StandingsRow;
   team: Team;
 };
-
-type SortKey = "rank" | "pts" | "w" | "l" | "d" | "gf" | "ga" | "gd";
 
 const splits: { value: StandingsSplit; label: string }[] = [
   { value: "all", label: "All" },
@@ -19,7 +19,7 @@ const splits: { value: StandingsSplit; label: string }[] = [
   { value: "away", label: "Away" },
 ];
 
-const columns: { key: SortKey; label: string; title: string }[] = [
+const columns: { key: SortColumn; label: string; title: string }[] = [
   { key: "pts", label: "PTS", title: "Points" },
   { key: "w", label: "W", title: "Won" },
   { key: "l", label: "L", title: "Lost" },
@@ -29,33 +29,16 @@ const columns: { key: SortKey; label: string; title: string }[] = [
   { key: "gd", label: "+/-", title: "Goal difference" },
 ];
 
-function pick(row: StandingsRow, split: StandingsSplit): RecordLine {
-  return split === "home" ? row.home : split === "away" ? row.away : row.conference;
-}
-
-function value(record: RecordLine, key: SortKey): number {
-  switch (key) {
-    case "pts":
-      return record.pts;
-    case "w":
-      return record.w;
-    case "l":
-      return record.l;
-    case "d":
-      return record.d;
-    case "gf":
-      return record.gf;
-    case "ga":
-      return record.ga;
-    case "gd":
-      return record.gf - record.ga;
-    default:
-      return 0;
-  }
-}
-
-export function StandingsTable({ entries }: { entries: StandingsEntry[] }) {
+export function StandingsTable({
+  entries,
+  conferenceStarted,
+}: {
+  entries: StandingsEntry[];
+  /** Decides what the All view shows; see `recordFor`. */
+  conferenceStarted: boolean;
+}) {
   const [split, setSplit] = useState<StandingsSplit>("all");
+  // Standing is the order that decides the CCIW tournament field, so it is the default.
   const [sort, setSort] = useState<SortKey>("rank");
 
   // Conference rank is fixed by the table order, so it survives re-sorting.
@@ -64,35 +47,22 @@ export function StandingsTable({ entries }: { entries: StandingsEntry[] }) {
     [entries],
   );
 
-  const rows = useMemo(() => {
-    if (sort === "rank") return ranked;
-    return [...ranked].sort((a, b) => {
-      const diff = value(pick(b.row, split), sort) - value(pick(a.row, split), sort);
-      // Losses read best ascending; everything else descending.
-      return sort === "l" ? -diff || a.rank - b.rank : diff || a.rank - b.rank;
-    });
-  }, [ranked, sort, split]);
+  const rows = useMemo(
+    () => sortEntries(ranked, sort, split, conferenceStarted),
+    [ranked, sort, split, conferenceStarted],
+  );
 
   return (
     <div className="bc-card overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line p-3">
-        <div role="group" aria-label="Standings split" className="flex gap-1 rounded-control bg-ground p-1">
-          {splits.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setSplit(option.value)}
-              aria-pressed={split === option.value}
-              className={`rounded-control px-4 py-1.5 text-[0.78rem] font-semibold transition ${
-                split === option.value
-                  ? "bg-accent text-white shadow-sm"
-                  : "text-ink-muted hover:text-ink"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        <SlidingSegments
+          label="Standings split"
+          value={split}
+          onChange={setSplit}
+          options={splits}
+          ringed={false}
+          itemClassName="px-4"
+        />
 
         <label className="flex items-center gap-2 text-[0.78rem] text-ink-muted">
           Sort by
@@ -102,6 +72,7 @@ export function StandingsTable({ entries }: { entries: StandingsEntry[] }) {
             className="rounded-control border border-line bg-surface px-3 py-1.5 text-[0.78rem] font-semibold text-ink outline-none focus:border-accent"
           >
             <option value="rank">Standing</option>
+            <option value="form">Form</option>
             {columns.map((column) => (
               <option key={column.key} value={column.key}>
                 {column.title}
@@ -111,7 +82,7 @@ export function StandingsTable({ entries }: { entries: StandingsEntry[] }) {
         </label>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-[0.85rem]">
           <thead>
             <tr className="bc-label text-left text-[0.65rem] text-ink-faint">
@@ -132,12 +103,21 @@ export function StandingsTable({ entries }: { entries: StandingsEntry[] }) {
                   </button>
                 </th>
               ))}
-              <th scope="col" className="px-4 py-2.5 text-left font-semibold">Form</th>
+              <th scope="col" className="px-4 py-2.5 text-left font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setSort("form")}
+                  title="Sort by form"
+                  className={`transition hover:text-accent ${sort === "form" ? "text-accent" : ""}`}
+                >
+                  Form
+                </button>
+              </th>
             </tr>
           </thead>
           <tbody>
             {rows.map(({ row, team, rank }) => {
-              const record = pick(row, split);
+              const record = recordFor(row, split, conferenceStarted);
               const gp = record.w + record.l + record.d;
               const gd = record.gf - record.ga;
 

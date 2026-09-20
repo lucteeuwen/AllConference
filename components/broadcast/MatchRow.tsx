@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { TeamBadge } from "@/components/TeamBadge";
-import { formatKickoff } from "@/lib/format";
+import { formatKickoff, formatShortDate } from "@/lib/format";
 import { competitionLabel } from "@/lib/selectors";
 import type { Match, MatchSide } from "@/lib/types";
 
-export function StatusPill({ match }: { match: Match }) {
+/** With `showDate`, an upcoming match shows its date here (the kickoff time then sits between the teams). */
+export function StatusPill({ match, showDate = false }: { match: Match; showDate?: boolean }) {
   if (match.status === "live") {
     return (
-      <span className="bc-label flex items-center gap-1.5 rounded-control bg-live/10 px-2.5 py-1 text-[0.68rem] text-live">
+      <span className="bc-label flex shrink-0 items-center gap-1.5 rounded-control bg-live/10 px-2.5 py-1 text-[0.68rem] whitespace-nowrap text-live">
         <span className="live-dot size-1.5 rounded-full bg-live" />
         {match.minute ? <>Live {match.minute}&apos;</> : "Live"}
       </span>
@@ -15,21 +16,21 @@ export function StatusPill({ match }: { match: Match }) {
   }
   if (match.status === "final") {
     return (
-      <span className="bc-label rounded-control bg-ground px-2.5 py-1 text-[0.68rem] text-ink-muted">
+      <span className="bc-label shrink-0 rounded-control bg-ground px-2.5 py-1 text-[0.68rem] whitespace-nowrap text-ink-muted">
         Full time
       </span>
     );
   }
   if (match.status === "postponed" || match.status === "canceled") {
     return (
-      <span className="bc-label rounded-control bg-amber-100 px-2.5 py-1 text-[0.68rem] text-amber-700">
+      <span className="bc-label shrink-0 rounded-control bg-amber-100 px-2.5 py-1 text-[0.68rem] whitespace-nowrap text-amber-700">
         {match.status === "postponed" ? "Postponed" : "Canceled"}
       </span>
     );
   }
   return (
-    <span className="bc-label rounded-control bg-accent-soft px-2.5 py-1 text-[0.68rem] text-accent">
-      {formatKickoff(match.date)}
+    <span className="bc-label shrink-0 rounded-control bg-accent-soft px-2.5 py-1 text-[0.68rem] whitespace-nowrap text-accent">
+      {showDate ? formatShortDate(match.date) : formatKickoff(match.date)}
     </span>
   );
 }
@@ -49,8 +50,12 @@ export function winnerOf(match: Match): "home" | "away" | null {
   return home > away ? "home" : "away";
 }
 
-/** The list row used wherever matches are listed. */
-export function MatchRow({ match }: { match: Match }) {
+/**
+ * The list row used wherever matches are listed. `showDate` is for lists with
+ * no day headings: upcoming rows put the date in the pill, every other row
+ * keeps its status pill and leads the label with the date instead.
+ */
+export function MatchRow({ match, showDate = false }: { match: Match; showDate?: boolean }) {
   const winner = winnerOf(match);
   const homeWon = winner === "home";
   const awayWon = winner === "away";
@@ -64,10 +69,11 @@ export function MatchRow({ match }: { match: Match }) {
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="bc-label truncate text-[0.68rem] text-ink-faint">
+          {showDate && match.status !== "scheduled" ? `${formatShortDate(match.date)} · ` : ""}
           {competitionLabel(match)}
           {match.venue ? ` · ${match.venue}` : ""}
         </span>
-        <StatusPill match={match} />
+        <StatusPill match={match} showDate={showDate} />
       </div>
 
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">

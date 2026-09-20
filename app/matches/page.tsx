@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Lockup } from "@/components/broadcast/Lockup";
 import { DateStrip, type DayChip } from "@/components/DateStrip";
+import { EarlierMatches } from "@/components/EarlierMatches";
 import { MatchFilterBar } from "@/components/MatchFilterBar";
 import { MatchRow } from "@/components/broadcast/MatchRow";
 import { EmptyState } from "@/components/EmptyState";
-import { applyFilters, filtersToQuery, parseFilters, type MatchFilters } from "@/lib/filters";
+import { applyFilters, filtersToQuery, parseFilters } from "@/lib/filters";
 import { formatChipLabel, formatDayLabel } from "@/lib/format";
 import { SEASON_LABEL, dayKey, todayKey } from "@/lib/season";
 import { getSeasonData } from "@/lib/season-data";
@@ -15,54 +15,38 @@ export const metadata: Metadata = {
   title: "Matches",
 };
 
-function DaySection({ group, anchor }: { group: DayGroup; anchor?: boolean }) {
+/** Delay steps of the load cascade; rows past the first dozen share the last one. */
+const CASCADE_MS = 55;
+const CASCADE_STEPS = 12;
+
+function cascade(index: number | undefined) {
+  if (index === undefined) return {};
+  return {
+    className: "rise-in",
+    style: { animationDelay: `${Math.min(index, CASCADE_STEPS) * CASCADE_MS}ms` },
+  };
+}
+
+/** `startIndex` places the day in the load cascade; leave it off to skip the animation. */
+function DaySection({ group, startIndex }: { group: DayGroup; startIndex?: number }) {
   return (
-    <section id={anchor ? "today" : undefined} className={anchor ? "scroll-mt-6" : undefined}>
-      <div className="mb-3 flex items-baseline justify-between px-1">
-        <h2 className="bc-label text-[0.78rem] text-ink">{formatDayLabel(group.key)}</h2>
-        <span className="text-[0.72rem] text-ink-faint tabular-nums">
-          {group.matches.length} {group.matches.length === 1 ? "match" : "matches"}
-        </span>
+    <section>
+      <div {...cascade(startIndex)}>
+        <div className="mb-3 flex items-baseline justify-between px-1">
+          <h2 className="bc-label text-[0.78rem] text-ink">{formatDayLabel(group.key)}</h2>
+          <span className="text-[0.72rem] text-ink-faint tabular-nums">
+            {group.matches.length} {group.matches.length === 1 ? "match" : "matches"}
+          </span>
+        </div>
       </div>
       <div className="space-y-2.5">
-        {group.matches.map((match) => (
-          <MatchRow key={match.id} match={match} />
+        {group.matches.map((match, index) => (
+          <div key={match.id} {...cascade(startIndex === undefined ? undefined : startIndex + 1 + index)}>
+            <MatchRow match={match} />
+          </div>
         ))}
       </div>
     </section>
-  );
-}
-
-/**
- * Sits on the boundary between finished days and the days ahead, which is both
- * where the list starts when collapsed and where the reader is looking once it
- * expands. The `#today` hash keeps today's matches in place either way.
- */
-function EarlierToggle({ filters, count }: { filters: MatchFilters; count: number }) {
-  const open = filters.showPast;
-  const href = `/matches${filtersToQuery({ ...filters, showPast: !open })}#today`;
-
-  return (
-    <div className="relative py-1">
-      <span aria-hidden="true" className="absolute inset-x-0 top-1/2 h-px bg-line" />
-      <div className="relative flex justify-center">
-        <Link
-          href={href}
-          className="flex items-center gap-1.5 rounded-full border border-line bg-surface px-4 py-1.5 text-[13px] font-semibold text-ink-muted transition hover:border-accent hover:text-accent"
-        >
-          <svg
-            viewBox="0 0 16 16"
-            className={`size-3 transition ${open ? "" : "rotate-180"}`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          {open ? "Hide earlier matches" : `Show ${count} earlier ${count === 1 ? "match" : "matches"}`}
-        </Link>
-      </div>
-    </div>
   );
 }
 
@@ -91,63 +75,82 @@ export default async function MatchesPage(props: PageProps<"/matches">) {
   const current = groups.filter((group) => group.key >= today);
   const pastCount = past.reduce((total, group) => total + group.matches.length, 0);
 
-  // A results-only view is entirely behind us, and so is a season that has run
-  // out of fixtures. Both read better newest first, with no split to make.
-  const resultsOnly = filters.status === "results";
+  // A season that has run out of fixtures reads better newest first, with no
+  // split to make. A pinned day is a single group either way.
   const pinnedToDay = filters.day !== null;
-  const splitAtToday = !resultsOnly && !pinnedToDay && current.length > 0;
+  const splitAtToday = !pinnedToDay && current.length > 0;
 
-  const flatGroups =
-    !splitAtToday && !pinnedToDay && (resultsOnly || current.length === 0)
-      ? [...groups].reverse()
-      : groups;
+  const flatGroups = !splitAtToday && !pinnedToDay ? [...groups].reverse() : groups;
 
   const shown = splitAtToday
     ? (filters.showPast ? groups : current).reduce((total, group) => total + group.matches.length, 0)
     : visible.length;
 
+  // Each day's place in the load cascade: heading plus rows of every day before it.
+  const listed = splitAtToday ? current : flatGroups;
+  const startIndexes = listed.map((_, index) =>
+    listed.slice(0, index).reduce((total, group) => total + group.matches.length + 1, 0),
+  );
+
   return (
     <>
-      <Lockup title="Matches" subtitle={`${SEASON_LABEL} · CCIW Men's Soccer`}>
-        <DateStrip
-          chips={chips}
-          allHref={`/matches${filtersToQuery({ ...filters, day: null })}`}
-          activeDay={filters.day}
-          today={today}
-        />
-      </Lockup>
+      <div
+        id="matches-sticky"
+        className="sticky top-0 z-30 -mx-4 flow-root bg-ground px-4 pb-3 md:top-16 md:mx-0 md:px-0"
+      >
+        <Lockup title="Matches" subtitle={`${SEASON_LABEL} · CCIW Men's Soccer`}>
+          <DateStrip
+            chips={chips}
+            allHref={`/matches${filtersToQuery({ ...filters, day: null })}`}
+            activeDay={filters.day}
+            today={today}
+          />
+        </Lockup>
 
-      <div className="mt-6">
-        <MatchFilterBar
-          filters={filters}
-          teams={data.conference}
-          shown={shown}
-          total={all.length}
-        />
+        <div className="mt-3">
+          <MatchFilterBar
+            filters={filters}
+            teams={data.conference}
+            shown={shown}
+            total={all.length}
+          />
+        </div>
       </div>
 
-      {groups.length === 0 ? (
-        <EmptyState
-          title="No matches match these filters"
-          body="Try widening the date, switching back to all games, or clearing the team selection."
-          actionLabel="Clear all filters"
-          actionHref="/matches"
-        />
-      ) : splitAtToday ? (
-        <div className="space-y-7">
-          {filters.showPast ? past.map((group) => <DaySection key={group.key} group={group} />) : null}
-          {pastCount > 0 ? <EarlierToggle filters={filters} count={pastCount} /> : null}
-          {current.map((group, index) => (
-            <DaySection key={group.key} group={group} anchor={index === 0} />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-7">
-          {flatGroups.map((group) => (
-            <DaySection key={group.key} group={group} />
-          ))}
-        </div>
-      )}
+      <div className="pt-2 [overflow-anchor:none]">
+        {groups.length === 0 ? (
+          <EmptyState
+            title="No matches match these filters"
+            body="Try widening the date, switching back to all games, or clearing the team selection."
+            actionLabel="Clear all filters"
+            actionHref="/matches"
+          />
+        ) : splitAtToday ? (
+          <div className="space-y-7">
+            {pastCount > 0 ? (
+              <EarlierMatches
+                count={pastCount}
+                open={filters.showPast}
+                openHref={`/matches${filtersToQuery({ ...filters, showPast: true })}`}
+                closeHref={`/matches${filtersToQuery({ ...filters, showPast: false })}`}
+              >
+                {past.map((group) => (
+                  <DaySection key={group.key} group={group} />
+                ))}
+              </EarlierMatches>
+            ) : null}
+            {current.map((group, index) => (
+              <DaySection key={group.key} group={group} startIndex={startIndexes[index]} />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-7">
+            {flatGroups.map((group, index) => (
+              <DaySection key={group.key} group={group} startIndex={startIndexes[index]} />
+            ))}
+          </div>
+        )}
+      </div>
     </>
   );
 }

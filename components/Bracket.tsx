@@ -161,7 +161,7 @@ export function Bracket({
             : "Projected seeds from the current table."
           : "Seeds appear once conference play starts."}
       </p>
-      <div className="no-scrollbar -mx-4 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+      <div className="no-scrollbar relative -mx-4 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
         <div className="grid min-w-[660px] grid-cols-3 gap-8">
           {COLUMNS.map((column, columnIndex) => (
             <div key={column.title} className="flex flex-col">

@@ -6,9 +6,9 @@
 
 /*
  * Every token resolves through a plain custom property. `@theme inline` makes
- * `.bg-surface` emit `var(--surface)` rather than a baked literal, so both the
- * theme switch and the design sidebar can restyle the entire app by setting
- * properties on the root element, with no rebuild.
+ * `.bg-surface` emit `var(--surface)` rather than a baked literal, so the
+ * theme switch can restyle the entire app by setting properties on the root
+ * element, with no rebuild.
  */
 @theme inline {
   --color-navy: var(--navy);
@@ -112,8 +112,7 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Shape, density, type and motion. Shared across both themes and all driven by
- * the design sidebar.
+ * Shape, density, type and motion. Shared across both themes.
  * ------------------------------------------------------------------------ */
 :root {
   --card-radius: 5px;
@@ -146,6 +145,9 @@
 html {
   -webkit-text-size-adjust: 100%;
   font-size: calc(16px * var(--font-scale));
+  /* Nothing may make the page, and so the fixed bottom bar, wider than the
+   * device. `clip` rather than `hidden` so sticky headers keep working. */
+  overflow-x: clip;
 }
 
 body {
@@ -155,8 +157,8 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
- * Broadcast primitives. Components use these classes so a single token move in
- * the sidebar reaches every page at once.
+ * Broadcast primitives. Components use these classes so a single token move
+ * reaches every page at once.
  * ------------------------------------------------------------------------ */
 
 .bc-shadow {
@@ -181,14 +183,6 @@ body {
     0 8px 24px -16px rgb(var(--shadow-rgb) / calc(0.3 * var(--shadow-strength)));
 }
 
-[data-cards="flat"] .bc-card {
-  box-shadow: none !important;
-}
-[data-cards="outlined"] .bc-card {
-  box-shadow: none !important;
-  border-width: calc(var(--border-width) * 2);
-}
-
 /* Row padding, the single lever behind the density control. */
 .bc-row {
   padding-block: calc(0.7rem * var(--density));
@@ -211,34 +205,6 @@ body {
   letter-spacing: var(--heading-tracking);
 }
 
-[data-figures="proportional"] .tabular-nums {
-  font-variant-numeric: normal;
-}
-
-/* Structure toggles. These change which rules apply rather than one value, so
- * they ride on data attributes instead of custom properties. */
-[data-rail="off"] .bc-rail {
-  display: none;
-}
-[data-watermark="off"] .bc-watermark {
-  display: none;
-}
-[data-rule="off"] .bc-rule {
-  display: none;
-}
-[data-sticky="off"] .bc-sticky {
-  position: static;
-}
-
-/* With the design panel open the page shifts rather than hiding behind it, so
- * you can see what you are tuning. On phones the panel takes the full width
- * and overlays instead. */
-@media (min-width: 768px) {
-  [data-design="open"] body {
-    padding-right: 19rem;
-  }
-}
-
 /* Horizontal chip rails scroll without a visible scrollbar. */
 .no-scrollbar {
   scrollbar-width: none;
@@ -251,10 +217,10 @@ body {
 /* ---------------------------------------------------------------------------
  * Motion
  *
- * Every duration is multiplied by --motion-scale, so the sidebar's speed
- * control covers all of it and zero stops everything dead. Each animation
- * fills `both`, so a zero duration lands straight on the end state rather than
- * leaving elements invisible.
+ * Every duration is multiplied by --motion-scale, so one control covers all
+ * of it and zero stops everything dead. Each animation fills `both`, so a
+ * zero duration lands straight on the end state rather than leaving elements
+ * invisible.
  * ------------------------------------------------------------------------ */
 
 @keyframes live-pulse {
@@ -362,6 +328,16 @@ body {
   min-height: 0;
 }
 
+/* The blue pill of a segmented control sliding between choices. */
+.bc-slider {
+  transition:
+    left calc(0.35s * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1),
+    width calc(0.35s * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bc-slider-text {
+  transition: color calc(0.35s * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .bc-collapse-chevron {
   transition: transform calc(0.35s * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -369,14 +345,7 @@ body {
   transform: rotate(90deg);
 }
 
-/* The reveal control turns off the scroll entrance without touching the rest. */
-[data-reveal="off"] .rise-in {
-  animation: none;
-  opacity: 1;
-  transform: none;
-}
-
-/* The reader's own setting always wins, whatever the sidebar says. */
+/* The reader's own reduced-motion setting always wins. */
 @media (prefers-reduced-motion: reduce) {
   .live-dot,
   .radio-wave,
@@ -398,7 +367,9 @@ body {
     display: none;
   }
   .bc-collapse,
-  .bc-collapse-chevron {
+  .bc-collapse-chevron,
+  .bc-slider,
+  .bc-slider-text {
     transition: none !important;
   }
 }

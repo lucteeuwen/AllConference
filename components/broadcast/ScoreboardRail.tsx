@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { TeamBadge } from "@/components/TeamBadge";
 import type { Team } from "@/lib/types";
 
 export type RailTile = {
   id: string;
+  /** e.g. "Oct 3". */
+  dateLabel: string;
   /** "FINAL", "58'", or a kickoff time. */
   status: string;
   live: boolean;
@@ -20,8 +22,27 @@ export type RailTile = {
  * The compact horizontal strip of games from the reference video: one tile per
  * match, status on top, a row per team, and the winner's score in a filled chip.
  */
-export function ScoreboardRail({ tiles }: { tiles: RailTile[] }) {
+export function ScoreboardRail({
+  tiles,
+  centerIndex = -1,
+}: {
+  tiles: RailTile[];
+  /** Index of the tile to rest the initial scroll position on (live/next match). */
+  centerIndex?: number;
+}) {
   const rail = useRef<HTMLDivElement>(null);
+  const tileRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+
+  // Rest the rail on the live/next match rather than always starting at the left edge.
+  useEffect(() => {
+    const node = rail.current;
+    const target = tileRefs.current[centerIndex];
+    if (!node || !target) return;
+    const nodeRect = node.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const offset = node.scrollLeft + (targetRect.left - nodeRect.left) - (nodeRect.width - targetRect.width) / 2;
+    node.scrollTo({ left: offset, behavior: "auto" });
+  }, [centerIndex, tiles]);
 
   const page = (direction: 1 | -1) => {
     const node = rail.current;
@@ -65,18 +86,21 @@ export function ScoreboardRail({ tiles }: { tiles: RailTile[] }) {
         {tiles.map((tile, index) => (
           <Link
             key={tile.id}
+            ref={(el) => {
+              tileRefs.current[index] = el;
+            }}
             href={`/matches/${tile.id}`}
             style={{ animationDelay: `${index * 55}ms`, width: "var(--rail-tile)" }}
             className="bc-card rise-in shrink-0 p-3 transition hover:border-accent/50"
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <span
-                className={`flex items-center gap-1 text-[10px] font-bold tracking-wide uppercase ${
+                className={`flex items-center gap-1 truncate text-[10px] font-bold tracking-wide uppercase ${
                   tile.live ? "text-live" : "text-ink-faint"
                 }`}
               >
-                {tile.live ? <span className="live-dot size-1.5 rounded-full bg-live" /> : null}
-                {tile.status}
+                {tile.live ? <span className="live-dot size-1.5 shrink-0 rounded-full bg-live" /> : null}
+                {tile.dateLabel} · {tile.status}
               </span>
               <span className="truncate text-[10px] font-semibold text-ink-faint uppercase">
                 {tile.note}

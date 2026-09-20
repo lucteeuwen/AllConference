@@ -12,11 +12,12 @@ import { TeamBadge } from "@/components/TeamBadge";
 import { buildRailTiles } from "@/lib/rail";
 import { formatKickoff, formatShortDate } from "@/lib/format";
 import { timingOf } from "@/lib/hero";
-import { competitionLabel } from "@/lib/selectors";
+import { competitionLabel, displayStandings } from "@/lib/selectors";
 import type { HomeData } from "@/lib/home";
 
 export function BroadcastHome({ data }: { data: HomeData }) {
-  const tiles = buildRailTiles([...data.today, ...data.recent, ...data.upcoming], data.standings, 12);
+  // 13 tiles: the six matches before the next one, the next one, and six after.
+  const { tiles, centerIndex } = buildRailTiles(data.matches, data.standings, 13, data.renderedAt);
 
   // Only present around a match: 15 minutes either side of it.
   const hero = data.hero;
@@ -105,7 +106,7 @@ export function BroadcastHome({ data }: { data: HomeData }) {
 
       {tiles.length > 0 ? (
         <div className="bc-rail">
-          <ScoreboardRail tiles={tiles} />
+          <ScoreboardRail tiles={tiles} centerIndex={centerIndex} />
         </div>
       ) : null}
 
@@ -113,7 +114,7 @@ export function BroadcastHome({ data }: { data: HomeData }) {
         <Reveal>
           <section>
             <SectionHeader title="Conference table" action="Full table" href="/standings" />
-            <StandingsSnippet standings={data.standings} />
+            <StandingsSnippet standings={displayStandings(data.standings)} />
           </section>
         </Reveal>
 
@@ -127,7 +128,7 @@ export function BroadcastHome({ data }: { data: HomeData }) {
 
       <Reveal>
         <section>
-          <SectionHeader title="Coming up" action="All fixtures" href="/matches" />
+          <SectionHeader title="Coming up" action="All Matches" href="/matches" />
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {data.upcoming.map((match) => {
               const matchHome = match.home.team;

@@ -16,8 +16,8 @@ type Props = {
  * its own edge toward a dark centre, an oversized abbreviation bleeds off the
  * side, and a rule underneath splits home colour from away colour.
  *
- * Wash strength, watermark opacity and rule height all come from tokens, so
- * the design sidebar drives them everywhere this is used.
+ * Wash strength, watermark opacity and rule height all come from tokens
+ * shared everywhere this is used.
  */
 export function WashHero({ home, away, children, celebrate }: Props) {
   const solo = !away;

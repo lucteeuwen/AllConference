@@ -271,3 +271,24 @@ describe("video", () => {
     expect(classifyVideo("not a url")).toBeUndefined();
   });
 });
+
+describe("box score placeholder players", () => {
+  const html = `
+    <table><caption>NCC - Player Stats</caption></table>
+    <table><caption>KAL - Player Stats</caption></table>
+    <table><caption>Scoring Summary</caption><tbody>
+      <tr><td>12:55</td><td><span class="hide">NCC</span></td>
+        <td><span class='text-bold'>0</span><br><span class="text-capitalize">Off a corner kick.</span></td></tr>
+      <tr><td>30:00</td><td><span class="hide">KAL</span></td>
+        <td><span class='text-bold'>Ryan Clark (2)</span><br><span class="text-capitalize">Goal.</span></td></tr>
+    </tbody></table>
+    <table><caption>Cautions and Ejections</caption><tbody>
+      <tr><td class="penalty-type red"></td><td>42:23</td><td>NCC</td><td>#0 0</td></tr>
+      <tr><td class="penalty-type yellow"></td><td>43:00</td><td>KAL</td><td>#15 Micah Amega</td></tr>
+    </tbody></table>`;
+
+  it("reads a blank player (printed as 0) as unknown, not as a name", () => {
+    const { events } = parseBoxScore(html);
+    expect(events.map((event) => event.playerName)).toEqual(["Unknown", "Ryan Clark", "Unknown", "Micah Amega"]);
+  });
+});

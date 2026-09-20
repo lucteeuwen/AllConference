@@ -51,6 +51,15 @@ function tableByCaption($: Cheerio, test: (caption: string) => boolean) {
     .map((table) => $(table));
 }
 
+/**
+ * A school that never entered a player leaves the name blank, which its box
+ * score prints as a bare "0" (or the jersey number). That is not a name.
+ */
+export function playerOrUnknown(name: string): string {
+  const clean = cleanText(name);
+  return /^\d*$/.test(clean) || /^unknown$/i.test(clean) ? "Unknown" : clean;
+}
+
 function stripTally(name: string): string {
   // "Sebastian Valdes (2)" carries the season tally.
   return cleanText(name.replace(/\(\d+\)\s*$/, ""));
@@ -111,7 +120,7 @@ export function parseBoxScore(html: string): BoxScore {
       minute,
       type,
       side,
-      playerName: ownGoal ? "Own goal" : scorer || "Unknown",
+      playerName: ownGoal ? "Own goal" : playerOrUnknown(scorer),
       assistName: assist && !/unassisted/i.test(assist) ? assist : undefined,
     });
   });
@@ -126,7 +135,7 @@ export function parseBoxScore(html: string): BoxScore {
       minute: clockToMinute(cells.eq(1).text()),
       type: /red/i.test(kind) ? "red" : "yellow",
       side: sideForAbbr(cells.eq(2).text()),
-      playerName: firstLast(player) || "Unknown",
+      playerName: playerOrUnknown(firstLast(player)),
     });
   });
 

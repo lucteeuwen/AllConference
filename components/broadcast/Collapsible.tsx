@@ -4,7 +4,7 @@ import { useEffect, useId, useState, type ReactNode } from "react";
 
 type Props = {
   title: string;
-  /** Persisted under `cciw-${storageKey}`, mirroring cciw-theme / cciw-design. */
+  /** Persisted under `cciw-${storageKey}`, mirroring cciw-theme. */
   storageKey: string;
   /** What it resolves to when nothing is stored yet. */
   defaultOpen?: boolean;

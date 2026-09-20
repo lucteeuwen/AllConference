@@ -4,7 +4,7 @@ import { ScorersSnippet } from "@/components/broadcast/StandingsSnippet";
 import { StandingsTable, type StandingsEntry } from "@/components/StandingsTable";
 import { Reveal } from "@/components/broadcast/Reveal";
 import { Bracket } from "@/components/Bracket";
-import { getTopScorers, standingsLines } from "@/lib/selectors";
+import { conferenceStarted, displayStandings, getGoalScorers, standingsLines } from "@/lib/selectors";
 import { SEASON_LABEL } from "@/lib/season";
 import { getSeasonData } from "@/lib/season-data";
 
@@ -16,14 +16,16 @@ export const revalidate = 60;
 
 export default async function StandingsPage() {
   const data = await getSeasonData();
-  const entries: StandingsEntry[] = standingsLines(data).map(({ row, team }) => ({ row, team }));
-  const scorers = getTopScorers(data, 8);
+  const lines = standingsLines(data);
+  const started = conferenceStarted(lines);
+  const entries: StandingsEntry[] = displayStandings(lines).map(({ row, team }) => ({ row, team }));
+  const scorers = getGoalScorers(data);
 
   return (
     <div className="bc-stack">
       <Lockup
         title="Standings"
-        subtitle={`${SEASON_LABEL} · Conference record`}
+        subtitle={`${SEASON_LABEL} · ${started ? "Conference record" : "Record so far"}`}
         aside={
           <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
             {entries.length} teams
@@ -32,7 +34,7 @@ export default async function StandingsPage() {
       />
 
       <div>
-        <StandingsTable entries={entries} />
+        <StandingsTable entries={entries} conferenceStarted={started} />
 
         <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-[0.72rem] text-ink-muted">
           <span className="flex items-center gap-1.5">
@@ -46,6 +48,7 @@ export default async function StandingsPage() {
           </span>
           <span className="text-ink-faint">
             Three points for a win, one for a draw. Form shows the last five results, oldest first.
+            {started ? "" : " Conference play hasn't started, so All shows every game played so far."}
           </span>
         </div>
       </div>
@@ -62,7 +65,7 @@ export default async function StandingsPage() {
       <Reveal>
         <section id="scoring-leaders" className="scroll-mt-6">
           <SectionHeader title="Scoring leaders" />
-          <ScorersSnippet scorers={scorers} />
+          <ScorersSnippet scorers={scorers} initial={8} />
         </section>
       </Reveal>
     </div>

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Logo } from "@/components/Logo";
+import { LogoMark } from "@/components/Logo";
 
 type Props = {
   title: string;
@@ -18,7 +18,7 @@ export function Lockup({ title, subtitle, aside, children }: Props) {
   return (
     <div className="-mx-4 bg-navy px-4 py-4 md:mx-0 md:mt-6 md:rounded-card md:px-6 md:py-5">
       <div className="flex items-center gap-3">
-        <Logo className="h-7 w-auto shrink-0 text-white" gap="var(--navy)" title="AllConference" />
+        <LogoMark className="h-7 w-auto shrink-0" title="AllConference" />
         <span aria-hidden="true" className="h-7 w-px shrink-0 bg-white/20" />
         <div className="min-w-0 flex-1">
           <h1 className="bc-title truncate text-[1.05rem] text-white md:text-[1.2rem]">{title}</h1>

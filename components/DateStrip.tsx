@@ -26,12 +26,14 @@ const GAP_PX = 8;
 /**
  * Horizontal date rail. Labels arrive already formatted from the server so the
  * markup matches on hydration; the only client-side work is positioning the
- * scroll on mount. "All" stays pinned to the left edge while the day chips
- * scroll underneath it.
+ * scroll on mount. "All" stays pinned to the left while the day chips scroll
+ * underneath it: on phones its backing runs out to the screen edge (sticky
+ * offsets are measured from the rail's padding, hence `-left-4`) so the button
+ * keeps its inset, and it fades into the chips beside it.
  */
 export function DateStrip({ chips, allHref, activeDay, today }: Props) {
   const railRef = useRef<HTMLDivElement>(null);
-  const allRef = useRef<HTMLAnchorElement>(null);
+  const pinnedRef = useRef<HTMLDivElement>(null);
   const chipRefs = useRef<Map<string, HTMLAnchorElement>>(new Map());
 
   // With nothing selected, the strip opens on today (or the next day with a
@@ -40,8 +42,8 @@ export function DateStrip({ chips, allHref, activeDay, today }: Props) {
 
   useEffect(() => {
     const rail = railRef.current;
-    const all = allRef.current;
-    if (!rail || !all) return;
+    const pinned = pinnedRef.current;
+    if (!rail || !pinned) return;
 
     const targetKey = activeDay ?? defaultChip?.key;
     const target = targetKey ? chipRefs.current.get(targetKey) : undefined;
@@ -50,18 +52,22 @@ export function DateStrip({ chips, allHref, activeDay, today }: Props) {
       return;
     }
 
-    rail.scrollLeft = activeDay
+    const railBox = rail.getBoundingClientRect();
+    const targetBox = target.getBoundingClientRect();
+    rail.scrollLeft += activeDay
       ? // A picked day gets centered, so it reads comfortably mid-strip.
-        target.offsetLeft - rail.clientWidth / 2 + target.clientWidth / 2
-      : // Otherwise open right on the default chip, just past "All".
-        target.offsetLeft - all.clientWidth - GAP_PX;
+        targetBox.left + targetBox.width / 2 - (railBox.left + railBox.width / 2)
+      : // Otherwise open right on the default chip, just past the pinned "All".
+        targetBox.left - (railBox.left + pinned.offsetWidth + GAP_PX);
   }, [activeDay, defaultChip?.key]);
 
   return (
     <div ref={railRef} className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">
-      <div className="sticky left-0 z-10 shrink-0 bg-navy">
+      <div
+        ref={pinnedRef}
+        className="sticky -left-4 z-10 -ml-4 shrink-0 bg-navy pr-2 pl-4 after:pointer-events-none after:absolute after:top-0 after:left-full after:h-full after:w-3 after:bg-linear-to-r after:from-navy after:to-transparent md:left-0 md:ml-0 md:pl-0"
+      >
         <Link
-          ref={allRef}
           href={allHref}
           className={`flex flex-col items-center justify-center rounded-xl px-4 py-2 text-center transition ${
             activeDay === null

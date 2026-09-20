@@ -33,6 +33,7 @@ export function Tabs({ tabs, active, tone = "dark" }: Props) {
             key={tab.key}
             href={tab.href}
             scroll={false}
+            replace
             role="tab"
             aria-selected={selected}
             className={`relative shrink-0 px-4 py-3 text-[13px] font-semibold whitespace-nowrap transition ${

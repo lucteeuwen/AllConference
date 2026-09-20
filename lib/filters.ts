@@ -5,13 +5,11 @@ import type { Match } from "@/lib/types";
  * be linked, shared and restored on reload.
  */
 
-export type StatusFilter = "all" | "results" | "upcoming";
 export type CompetitionFilter = "all" | "conference" | "non-conference";
 
 export type MatchFilters = {
   /** A YYYY-MM-DD day key, or null for the whole season. */
   day: string | null;
-  status: StatusFilter;
   competition: CompetitionFilter;
   teamSlugs: string[];
   /**
@@ -23,7 +21,6 @@ export type MatchFilters = {
 
 export const emptyFilters: MatchFilters = {
   day: null,
-  status: "all",
   competition: "all",
   teamSlugs: [],
   showPast: false,
@@ -42,12 +39,10 @@ function list(value: string | string[] | undefined): string[] {
 }
 
 export function parseFilters(params: RawSearchParams): MatchFilters {
-  const status = single(params.status);
   const competition = single(params.competition);
 
   return {
     day: single(params.day) ?? null,
-    status: status === "results" || status === "upcoming" ? status : "all",
     competition:
       competition === "conference" || competition === "non-conference" ? competition : "all",
     teamSlugs: list(params.teams),
@@ -58,7 +53,6 @@ export function parseFilters(params: RawSearchParams): MatchFilters {
 export function filtersToQuery(filters: MatchFilters): string {
   const params = new URLSearchParams();
   if (filters.day) params.set("day", filters.day);
-  if (filters.status !== "all") params.set("status", filters.status);
   if (filters.competition !== "all") params.set("competition", filters.competition);
   if (filters.teamSlugs.length > 0) params.set("teams", filters.teamSlugs.join(","));
   if (filters.showPast) params.set("past", "1");
@@ -70,7 +64,6 @@ export function filtersToQuery(filters: MatchFilters): string {
 export function activeFilterCount(filters: MatchFilters): number {
   return (
     (filters.day ? 1 : 0) +
-    (filters.status !== "all" ? 1 : 0) +
     (filters.competition !== "all" ? 1 : 0) +
     filters.teamSlugs.length
   );
@@ -84,16 +77,6 @@ export function applyFilters(
 ): Match[] {
   return list.filter((match) => {
     if (filters.day && dayOf(match.date) !== filters.day) return false;
-
-    if (filters.status === "results" && match.status !== "final") return false;
-    if (
-      filters.status === "upcoming" &&
-      match.status !== "scheduled" &&
-      match.status !== "live" &&
-      match.status !== "postponed"
-    ) {
-      return false;
-    }
 
     // The CCIW tournament counts as conference play for filtering.
     const conference = match.isConference || ["quarterfinal", "semifinal", "final"].includes(match.stage);
