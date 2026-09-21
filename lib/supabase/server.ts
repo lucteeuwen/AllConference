@@ -2,12 +2,12 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 
 /** How long a Supabase read is served from Next's data cache, in seconds. */
-export const DATA_REVALIDATE_SECONDS = 60;
+export const DATA_REVALIDATE_SECONDS = 30;
 
 /**
  * Read-only client for server components. The anon key can only select (RLS),
  * and nothing here needs a user session. Reads go through `fetch` with a
- * revalidate window, so pages share one cached copy per minute instead of
+ * revalidate window, so pages share one cached copy per half minute instead of
  * querying the database on every request.
  */
 export function createServerClient() {

@@ -54,6 +54,7 @@ type MatchRow = {
   finished_at: string | null;
   status: MatchStatus;
   minute: number | null;
+  started_at: string | null;
   home_slug: string | null;
   away_slug: string | null;
   home_placeholder: string | null;
@@ -137,6 +138,7 @@ function toMatch(row: MatchRow, teams: Map<string, Team>): Match {
     finishedAt: row.finished_at,
     status: row.status,
     minute: row.minute ?? undefined,
+    startedAt: row.started_at ?? undefined,
     home: side(row.home_slug, row.home_placeholder, row.home_score, row.home_pens),
     away: side(row.away_slug, row.away_placeholder, row.away_score, row.away_pens),
     venue: row.venue,
@@ -172,7 +174,7 @@ export const getSeasonData = cache(async (): Promise<SeasonData> => {
       db
         .from("matches")
         .select(
-          "id, date, finished_at, status, minute, home_slug, away_slug, home_placeholder, away_placeholder, home_score, away_score, home_pens, away_pens, venue, timezone, time_tbd, is_conference, stage, bracket_slot, attendance, referee, video_url, boxscore_url, recap_url",
+          "id, date, finished_at, status, minute, started_at, home_slug, away_slug, home_placeholder, away_placeholder, home_score, away_score, home_pens, away_pens, venue, timezone, time_tbd, is_conference, stage, bracket_slot, attendance, referee, video_url, boxscore_url, recap_url",
         )
         .eq("season", SEASON)
         .order("date")

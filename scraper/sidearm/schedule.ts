@@ -101,8 +101,8 @@ function mapStatus(game: SidearmGame): MatchStatus | "skip" {
     // "O" with no W/L/T is an exhibition or a game the school only hosted.
     return result && ["W", "L", "T"].includes(result.status ?? "") && hasScore ? "final" : "skip";
   }
-  // Anything else carrying a score is in progress ("I", or "A" mid-update).
-  return hasScore ? "live" : "scheduled";
+  // "I" is in progress even before a goal; anything else counts once it has a score.
+  return game.status === "I" || hasScore ? "live" : "scheduled";
 }
 
 /** Parses one school's feed. Returns only games that belong on the site. */

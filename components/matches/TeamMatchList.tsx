@@ -1,8 +1,10 @@
 "use client";
 
 import { EarlierMatches } from "@/components/EarlierMatches";
+import { LiveRefresh } from "@/components/LiveRefresh";
 import { MatchRow } from "@/components/broadcast/MatchRow";
 import { matchDayKey } from "@/lib/format";
+import { timingOf } from "@/lib/hero";
 import { useViewerDay } from "@/lib/use-viewer-day";
 import type { Match } from "@/lib/types";
 
@@ -34,16 +36,26 @@ export function TeamMatchList({
   const rows = (list: Match[]) => (
     <div className="space-y-2.5">
       {list.map((match) => (
-        <MatchRow key={match.id} match={match} showDate />
+        <MatchRow key={match.id} match={match} renderedAt={renderedAt} showDate />
       ))}
     </div>
   );
 
   // A season with nothing left to play reads better newest first.
-  if (current.length === 0) return rows([...fixtures].reverse());
+  const refresh = <LiveRefresh timings={fixtures.map(timingOf)} renderedAt={renderedAt} />;
+
+  if (current.length === 0) {
+    return (
+      <>
+        {refresh}
+        {rows([...fixtures].reverse())}
+      </>
+    );
+  }
 
   return (
     <div className="space-y-7">
+      {refresh}
       {past.length > 0 ? (
         <EarlierMatches count={past.length} open={showPast} openHref={`${base}&past=1`} closeHref={base}>
           {rows(past)}

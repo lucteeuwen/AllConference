@@ -8,12 +8,17 @@ import { WashHero } from "@/components/broadcast/WashHero";
 import { OverlapCard } from "@/components/broadcast/OverlapCard";
 import { Boxscore } from "@/components/broadcast/Boxscore";
 import { sideName } from "@/components/broadcast/MatchRow";
+import { LiveRefresh } from "@/components/LiveRefresh";
+import { MatchHeroScore } from "@/components/matches/MatchHeroScore";
 import { MatchVideo } from "@/components/MatchVideo";
 import { TeamBadge } from "@/components/TeamBadge";
 import { TeamComparison } from "@/components/TeamComparison";
 import { Tabs } from "@/components/Tabs";
 import { compareTeams } from "@/lib/comparison";
 import { getCardCounts, getSeasonData, withDetails } from "@/lib/season-data";
+import { timingOf } from "@/lib/hero";
+import { effectiveStatus } from "@/lib/live";
+import { renderedAt } from "@/lib/rendered-at";
 import { verifyVideo } from "@/lib/video-verify";
 import {
   competitionLabel,
@@ -22,7 +27,7 @@ import {
   getMatch,
   standingsLines,
 } from "@/lib/selectors";
-import type { Lineup, Match, MatchEvent, MatchSide } from "@/lib/types";
+import type { Lineup, MatchEvent, MatchSide } from "@/lib/types";
 
 type Props = PageProps<"/matches/[id]">;
 
@@ -34,14 +39,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${sideName(match.home)} vs ${sideName(match.away)}`,
   };
 }
-
-const statusCopy: Record<Match["status"], string> = {
-  scheduled: "Kickoff",
-  live: "In progress",
-  final: "Full time",
-  postponed: "Postponed",
-  canceled: "Canceled",
-};
 
 /**
  * Drawn rather than set in emoji: emoji depend on a font the machine may not
@@ -146,9 +143,11 @@ export default async function MatchPage({ params, searchParams }: Props) {
 
   const home = match.home.team;
   const away = match.away.team;
-  const live = match.status === "live";
+  const now = renderedAt();
+  const timing = timingOf(match);
+  const effective = effectiveStatus(timing, now).status;
+  const live = effective === "live";
   const hasScore = match.home.score !== null && match.away.score !== null;
-  const shootout = hasScore && match.home.pens != null && match.away.pens != null;
 
   const tabs = [
     { key: "details", label: "Details", href: `/matches/${match.id}?tab=details` },
@@ -163,6 +162,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
 
   return (
     <div className="bc-stack pt-4 md:pt-6">
+      <LiveRefresh timings={[timing]} renderedAt={now} />
       <section>
         <WashHero home={home} away={away} celebrate={live ? match.id : false}>
           <div className="mb-5 flex items-center justify-between">
@@ -192,37 +192,14 @@ export default async function MatchPage({ params, searchParams }: Props) {
               <span className="text-[0.68rem] text-white/50">Home</span>
             </div>
 
-            <div className="relative pt-3">
-              {hasScore ? (
-                <>
-                  {live ? (
-                    <span
-                      aria-hidden="true"
-                      className="score-bloom pointer-events-none absolute inset-0 flex items-center justify-center text-5xl font-black text-white"
-                    >
-                      {match.away.score}
-                    </span>
-                  ) : null}
-                  <div className="rise-in text-[2.4rem] font-black text-white tabular-nums md:text-[3rem]">
-                    {match.home.score}
-                    <span className="mx-2 text-white/30">-</span>
-                    {match.away.score}
-                  </div>
-                  {shootout ? (
-                    <p className="text-[0.72rem] font-bold text-white/70 tabular-nums">
-                      {match.home.pens}–{match.away.pens} on penalties
-                    </p>
-                  ) : null}
-                </>
-              ) : (
-                <div className="text-2xl font-black text-white">
-                  <KickoffValue match={match} />
-                </div>
-              )}
-              <p className="bc-label mt-1.5 text-[0.64rem] text-white/60">
-                {live ? (match.minute ? `${match.minute}' · In progress` : "In progress") : statusCopy[match.status]}
-              </p>
-            </div>
+            <MatchHeroScore
+              timing={timing}
+              homeScore={match.home.score}
+              awayScore={match.away.score}
+              homePens={match.home.pens}
+              awayPens={match.away.pens}
+              renderedAt={now}
+            />
 
             <div className="slide-from-right flex flex-col items-center gap-2.5">
               <TeamBadge team={away} size="xl" ring />
@@ -257,7 +234,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
             {video ? (
               <div className="bc-card bc-pad bc-shadow lg:col-span-2">
                 <h2 className="bc-label mb-3 text-[0.7rem] text-ink-faint">
-                  {!video.exact ? "Where to watch" : match.status === "final" ? "Watch the replay" : "Watch"}
+                  {!video.exact ? "Where to watch" : effective === "full-time" ? "Watch the replay" : "Watch"}
                 </h2>
                 <MatchVideo video={video} live={live} />
               </div>
@@ -284,11 +261,13 @@ export default async function MatchPage({ params, searchParams }: Props) {
               <h2 className="bc-label mb-3 text-[0.7rem] text-ink-faint">Timeline</h2>
               {match.events.length === 0 ? (
                 <p className="py-4 text-center text-[0.82rem] text-ink-muted">
-                  {match.status === "scheduled"
+                  {effective === "scheduled"
                     ? "Events appear here once the match kicks off."
-                    : match.status === "final" && !(match.home.score === 0 && match.away.score === 0)
-                      ? "The timeline appears once the box score is published."
-                      : "No goals or cards recorded."}
+                    : live
+                      ? "Goals and cards appear here as they are recorded."
+                      : effective === "full-time" && !(match.home.score === 0 && match.away.score === 0)
+                        ? "The timeline appears once the box score is published."
+                        : "No goals or cards recorded."}
                 </p>
               ) : (
                 <ol className="space-y-2.5">
@@ -339,6 +318,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
             })}
             home={home}
             away={away}
+            renderedAt={now}
           />
         ) : null}
         {active === "teams" && !(match.home.teamSlug && match.away.teamSlug) ? (

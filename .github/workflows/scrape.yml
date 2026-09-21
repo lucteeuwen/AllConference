@@ -2,9 +2,11 @@ name: Scrape CCIW data
 
 on:
   schedule:
-    # Every 15 minutes during the season (Aug–Nov). When a match is on, the
-    # run stays up and polls the host school every 2 minutes (live mode).
-    - cron: "*/15 * * 8-11 *"
+    # Every 5 minutes during the season (Aug–Nov). Each run does a full pass if
+    # the last one is over 14 minutes old, and otherwise only looks at matches
+    # that are on. When one is, the run stays up for 9 minutes polling just that
+    # match every minute (live mode), so the next run is already queued as it ends.
+    - cron: "*/5 * * 8-11 *"
     # Rosters and season stats once a day, 5 AM Central.
     - cron: "0 10 * 8-11 *"
   workflow_dispatch:
@@ -37,6 +39,8 @@ jobs:
         run: |
           if [ "${{ github.event.schedule }}" = "0 10 * 8-11 *" ] || [ "${{ inputs.rosters }}" = "true" ]; then
             npm run scrape -- --rosters
+          elif [ "${{ github.event.schedule }}" = "*/5 * * 8-11 *" ]; then
+            npm run scrape -- --auto
           else
             npm run scrape
           fi

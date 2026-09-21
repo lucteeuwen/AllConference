@@ -4,7 +4,8 @@ import { WashHero } from "@/components/broadcast/WashHero";
 import { OverlapCard } from "@/components/broadcast/OverlapCard";
 import { Boxscore } from "@/components/broadcast/Boxscore";
 import { Collapsible } from "@/components/broadcast/Collapsible";
-import { AutoRefresh, HeroStatus, HeroWindow } from "@/components/broadcast/HeroClock";
+import { HeroScore, HeroStatus, HeroWindow } from "@/components/broadcast/HeroClock";
+import { LiveRefresh } from "@/components/LiveRefresh";
 import { ScoreboardRail } from "@/components/broadcast/ScoreboardRail";
 import { ScorersSnippet, StandingsSnippet } from "@/components/broadcast/StandingsSnippet";
 import { Reveal } from "@/components/broadcast/Reveal";
@@ -12,6 +13,7 @@ import { LocalTime } from "@/components/LocalTime";
 import { TeamBadge } from "@/components/TeamBadge";
 import { buildRailTiles } from "@/lib/rail";
 import { timingOf } from "@/lib/hero";
+import { effectiveStatus } from "@/lib/live";
 import { competitionLabel, tableView } from "@/lib/selectors";
 import type { HomeData } from "@/lib/home";
 
@@ -23,12 +25,12 @@ export function BroadcastHome({ data }: { data: HomeData }) {
 
   // Only present around a match: 15 minutes either side of it.
   const hero = data.hero;
-  const live = hero?.status === "live";
+  const live = hero ? effectiveStatus(timingOf(hero), data.renderedAt).status === "live" : false;
   const hasScore = hero ? hero.home.score !== null && hero.away.score !== null : false;
 
   return (
     <div className="bc-stack pb-2">
-      <AutoRefresh />
+      <LiveRefresh timings={data.matches.map(timingOf)} renderedAt={data.renderedAt} idleMs={60_000} />
       <Lockup
         title="CCIW Men's Soccer"
         subtitle="Live scores, results and standings"
@@ -54,27 +56,14 @@ export function BroadcastHome({ data }: { data: HomeData }) {
                 </div>
 
                 <div className="relative">
-                  <HeroStatus timing={timingOf(hero)} minute={hero.minute} renderedAt={data.renderedAt} />
+                  <HeroStatus timing={timingOf(hero)} renderedAt={data.renderedAt} />
 
-                  {hasScore ? (
-                    <>
-                      {live ? (
-                        <span
-                          aria-hidden="true"
-                          className="score-bloom pointer-events-none absolute inset-0 flex items-center justify-center text-5xl font-black text-white"
-                        >
-                          {hero.away.score}
-                        </span>
-                      ) : null}
-                      <div className="rise-in text-[2.4rem] font-black text-white tabular-nums md:text-[3rem]">
-                        {hero.home.score}
-                        <span className="mx-2 text-white/30">-</span>
-                        {hero.away.score}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-2xl font-black text-white md:text-3xl">VS</div>
-                  )}
+                  <HeroScore
+                    timing={timingOf(hero)}
+                    homeScore={hero.home.score}
+                    awayScore={hero.away.score}
+                    renderedAt={data.renderedAt}
+                  />
 
                   <p className="bc-label mt-1.5 text-[0.64rem] text-white/55">
                     <LocalTime match={hero} format="shortTime" /> · {competitionLabel(hero)}

@@ -67,16 +67,39 @@ npm run dev
 
 | Command | What it does |
 | --- | --- |
-| `npm run scrape` | One scrape pass; stays up to 13 min polling every 2 min if a match is on |
+| `npm run scrape` | One full scrape pass; if a match is on, then polls just that match every minute for up to 9 min |
+| `npm run scrape -- --auto` | What the workflow runs every 5 min: a full pass if the last is over 14 min old, else live mode only |
+| `npm run scrape -- --live-only` | Live mode alone; exits within seconds when nothing is on |
 | `npm run scrape -- --rosters` | Also refreshes rosters and season stats |
 | `npm run scrape -- --dry-run [--json]` | Reads the feeds and prints what would be written |
 | `npm run scrape -- --no-live` | Skips live mode |
 | `npm test` | Parser tests against saved SIDEARM pages in `scraper/__tests__/fixtures` |
 | `npm run db:push` | Applies new migrations to the linked Supabase project |
 
-`.github/workflows/scrape.yml` runs the scraper every 15 minutes from August
-to November, and with `--rosters` once a day. It needs the repository secrets
-`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+`.github/workflows/scrape.yml` runs the scraper with `--auto` every 5 minutes
+from August to November, and with `--rosters` once a day. It needs the
+repository secrets `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+
+**Live mode** covers a match from 15 minutes before kickoff until its box score
+is read, or 150 minutes after kickoff. Each minute it re-reads only the feeds of
+the schools in that match and its box score, and writes only the columns a game
+changes (status, score, `finished_at`, `started_at`); the season, bracket, logos
+and rosters are left to the full pass. The site does not wait for the scraper to
+show a match as live: from kickoff it counts the minute up itself, and once a
+match should be over it shows "Full time" until the final score arrives.
+`started_at` is the scraper's estimate of when play began, set when it first sees
+the game in play near kickoff and re-anchored from each new goal's minute, and the
+site's clock counts from it.
+
+**How often is it scraping?**
+
+- GitHub → *Actions* → *Scrape CCIW data* lists every run with its start time and
+  length, which shows how far GitHub's scheduler drifts from every 5 minutes.
+- In Supabase, `scrape_runs` has one row per run (`full`, `full+rosters` or `live`;
+  quiet 5-minute ticks with no match on write none). Its `log` shows which matches
+  were polled and how many polls ran:
+  `select started_at, finished_at, mode, ok, log from scrape_runs order by id desc limit 30;`
+- `matches.updated_at` is when a match row last changed.
 
 ## Deploying
 
@@ -104,8 +127,11 @@ Things to know:
   between seasons. GitHub also turns off scheduled workflows in a public repo
   after 60 days without a commit; if that happens, re-enable them under
   Actions.
-- Pages are cached for 60 seconds, but data is only as fresh as the scraper:
-  about 15 minutes normally and 2 to 3 minutes while a match is on.
+- Pages are cached for 30 seconds, and the match, matches, team and home pages
+  refresh themselves every 30 seconds while a match is on. Data is only as fresh
+  as the scraper: about 15 minutes normally, about a minute while a match is on.
+- The `20260921120000_match_started_at` migration must be applied
+  (`npm run db:push`) before the site that reads `started_at` is deployed.
 
 ## Database
 
@@ -135,7 +161,7 @@ role key.
 | `/teams/[slug]` | Team header, season record, roster and schedule |
 
 `lib/season-data.ts` is the only module that talks to Supabase; reads are
-cached for 60 seconds. `lib/selectors.ts` derives everything else, and
+cached for 30 seconds. `lib/selectors.ts` derives everything else, and
 `lib/standings.ts` computes the table from finished matches (shared with the
 scraper, which uses it to project seeds).
 

@@ -6,7 +6,9 @@ import { EarlierMatches } from "@/components/EarlierMatches";
 import { EmptyState } from "@/components/EmptyState";
 import { Lockup } from "@/components/broadcast/Lockup";
 import { MatchFilterBar } from "@/components/MatchFilterBar";
+import { LiveRefresh } from "@/components/LiveRefresh";
 import { MatchRow } from "@/components/broadcast/MatchRow";
+import { timingOf } from "@/lib/hero";
 import { applyFilters, filtersToQuery, type MatchFilters } from "@/lib/filters";
 import { formatDayLabel, matchDayKey } from "@/lib/format";
 import { SEASON_LABEL } from "@/lib/season";
@@ -41,10 +43,12 @@ function cascade(index: number | undefined) {
 function DaySection({
   group,
   today,
+  renderedAt,
   startIndex,
 }: {
   group: DayGroup;
   today: string;
+  renderedAt: number;
   startIndex?: number;
 }) {
   return (
@@ -60,7 +64,7 @@ function DaySection({
       <div className="space-y-2.5">
         {group.matches.map((match, index) => (
           <div key={match.id} {...cascade(startIndex === undefined ? undefined : startIndex + 1 + index)}>
-            <MatchRow match={match} />
+            <MatchRow match={match} renderedAt={renderedAt} />
           </div>
         ))}
       </div>
@@ -111,8 +115,11 @@ export function MatchesView({
     listed.slice(0, index).reduce((total, group) => total + group.matches.length + 1, 0),
   );
 
+  const timings = useMemo(() => matches.map(timingOf), [matches]);
+
   return (
     <>
+      <LiveRefresh timings={timings} renderedAt={renderedAt} />
       <div
         id="matches-sticky"
         className="sticky top-0 z-30 -mx-4 flow-root bg-ground px-4 pb-3 md:top-16 md:mx-0 md:px-0"
@@ -159,18 +166,30 @@ export function MatchesView({
                 closeHref={`/matches${filtersToQuery({ ...filters, showPast: false })}`}
               >
                 {past.map((group) => (
-                  <DaySection key={group.key} group={group} today={today} />
+                  <DaySection key={group.key} group={group} today={today} renderedAt={renderedAt} />
                 ))}
               </EarlierMatches>
             ) : null}
             {current.map((group, index) => (
-              <DaySection key={group.key} group={group} today={today} startIndex={startIndexes[index]} />
+              <DaySection
+                key={group.key}
+                group={group}
+                today={today}
+                renderedAt={renderedAt}
+                startIndex={startIndexes[index]}
+              />
             ))}
           </div>
         ) : (
           <div className="space-y-7">
             {flatGroups.map((group, index) => (
-              <DaySection key={group.key} group={group} today={today} startIndex={startIndexes[index]} />
+              <DaySection
+                key={group.key}
+                group={group}
+                today={today}
+                renderedAt={renderedAt}
+                startIndex={startIndexes[index]}
+              />
             ))}
           </div>
         )}

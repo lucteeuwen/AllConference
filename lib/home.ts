@@ -1,5 +1,6 @@
 import { getSeasonData, withDetails } from "@/lib/season-data";
-import { ASSUMED_LENGTH_MS, pickHeroMatch } from "@/lib/hero";
+import { pickHeroMatch } from "@/lib/hero";
+import { SCHEDULED_END_MS } from "@/lib/live";
 import { getTopScorers, standingsLines, type ScorerLine, type StandingsLine } from "@/lib/selectors";
 import type { Match } from "@/lib/types";
 
@@ -28,7 +29,7 @@ export async function getHomeData(at?: number): Promise<HomeData> {
   // so it cannot use anyone's calendar. A match drops off the list once it has
   // had time to finish, rather than lingering until some particular midnight.
   const upcoming = all
-    .filter((match) => match.status === "scheduled" && Date.parse(match.date) >= now - ASSUMED_LENGTH_MS)
+    .filter((match) => match.status === "scheduled" && Date.parse(match.date) >= now - SCHEDULED_END_MS)
     .slice(0, 6);
 
   const hero = pickHeroMatch(all, now);

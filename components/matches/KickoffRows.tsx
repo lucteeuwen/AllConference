@@ -13,7 +13,7 @@ import { useTimeZone } from "@/lib/use-timezone";
 import type { Match } from "@/lib/types";
 
 /** The kickoff on its own, for the hero and the compact card. */
-export function KickoffValue({ match }: { match: Match }) {
+export function KickoffValue({ match }: { match: Pick<Match, "date" | "timeTbd"> }) {
   const tz = useTimeZone();
   return <>{formatKickoff(match.date, tz, match.timeTbd)}</>;
 }

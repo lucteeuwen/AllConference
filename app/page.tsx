@@ -7,10 +7,10 @@ export const metadata: Metadata = {
 };
 
 /**
- * Rebuilt at most once a minute. The match box is timed against the clock at
+ * Rebuilt at most every 30 seconds. The match box is timed against the clock at
  * render, and the browser re-checks that window itself between rebuilds.
  */
-export const revalidate = 60;
+export const revalidate = 30;
 
 export default async function HomePage(props: PageProps<"/">) {
   // Development only: `/?now=2026-10-03T20:20:00Z` previews the match box at

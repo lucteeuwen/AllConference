@@ -80,6 +80,8 @@ export type Match = {
   status: MatchStatus;
   /** Only when the source exposes it; many live feeds do not. */
   minute?: number;
+  /** ISO instant play is estimated to have begun, once the scraper has seen it. */
+  startedAt?: string;
   home: MatchSide;
   away: MatchSide;
   venue: string;

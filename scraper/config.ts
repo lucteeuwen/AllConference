@@ -18,7 +18,12 @@ export const LIVE = {
   leadMs: 15 * 60_000,
   /** …until this long after kickoff, unless it goes final first. */
   tailMs: 150 * 60_000,
-  pollMs: 2 * 60_000,
-  /** Leaves headroom under the workflow's 15 minute timeout. */
-  budgetMs: 13 * 60_000,
+  pollMs: 60_000,
+  /**
+   * How long one run keeps polling. The workflow starts a run every five
+   * minutes, so the next one is already queued when this ends.
+   */
+  budgetMs: 9 * 60_000,
+  /** A full pass (every feed, the bracket, logos) is at most this stale. */
+  fullEveryMs: 14 * 60_000,
 };

@@ -1,3 +1,4 @@
+import { effectiveStatus, scheduledEndMs, type LiveTiming } from "@/lib/live";
 import type { Match } from "@/lib/types";
 
 /**
@@ -5,42 +6,36 @@ import type { Match } from "@/lib/types";
  * match) and the browser (which hides and relabels it on the minute).
  *
  *   kickoff − 15 min   "Starting in 12 min" / "Starting soon"
- *   kickoff … end      live badge ("In progress" if the feed has no minute)
+ *   kickoff … end      live badge with an estimated match minute
  *   end … end + 15 min "Full time"
  *
- * `end` is when the scraper first saw the result; without it, kickoff + 2 h.
+ * `end` is when the scraper first saw the result; without it, when the match
+ * should have finished (see `lib/live.ts`).
  */
 
 export const HERO_LEAD_MS = 15 * 60_000;
 export const HERO_TAIL_MS = 15 * 60_000;
-/** Schools rarely flag a match as live, so assume it started after this. */
-export const START_GRACE_MS = 10 * 60_000;
-export const ASSUMED_LENGTH_MS = 120 * 60_000;
 
-export type HeroTiming = {
-  kickoff: string;
+export type HeroTiming = LiveTiming & {
   finishedAt: string | null;
-  status: Match["status"];
 };
 
 export type HeroPhase = "pre" | "starting" | "live" | "post" | "hidden";
 
 export function heroPhase(timing: HeroTiming, now: number): HeroPhase {
   const kickoff = new Date(timing.kickoff).getTime();
-  const end = timing.finishedAt
-    ? new Date(timing.finishedAt).getTime()
-    : kickoff + ASSUMED_LENGTH_MS;
+  const { status } = effectiveStatus(timing, now);
 
-  switch (timing.status) {
+  switch (status) {
     case "live":
       return "live";
-    case "final":
+    case "full-time": {
+      const end = timing.finishedAt ? new Date(timing.finishedAt).getTime() : scheduledEndMs(timing);
       return now <= end + HERO_TAIL_MS ? "post" : "hidden";
+    }
     case "scheduled":
-      if (now < kickoff - HERO_LEAD_MS) return "hidden";
-      if (now < kickoff + START_GRACE_MS) return now < kickoff - 60_000 ? "pre" : "starting";
-      // The feed never flagged it live; give up once it would long be over.
-      return now <= kickoff + ASSUMED_LENGTH_MS + HERO_TAIL_MS ? "live" : "hidden";
+      if (timing.timeTbd || now < kickoff - HERO_LEAD_MS) return "hidden";
+      return now < kickoff - 60_000 ? "pre" : "starting";
     default:
       return "hidden";
   }
@@ -53,7 +48,13 @@ export function minutesUntil(kickoff: string, now: number): number {
 const PRIORITY: Record<HeroPhase, number> = { live: 0, starting: 1, pre: 2, post: 3, hidden: 9 };
 
 export function timingOf(match: Match): HeroTiming {
-  return { kickoff: match.date, finishedAt: match.finishedAt, status: match.status };
+  return {
+    kickoff: match.date,
+    finishedAt: match.finishedAt,
+    startedAt: match.startedAt ?? null,
+    status: match.status,
+    timeTbd: match.timeTbd,
+  };
 }
 
 /** The match the box should show right now, or null to hide it. */

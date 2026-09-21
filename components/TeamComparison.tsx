@@ -61,10 +61,12 @@ export function TeamComparison({
   comparison,
   home,
   away,
+  renderedAt,
 }: {
   comparison: Comparison;
   home: Team;
   away: Team;
+  renderedAt: number;
 }) {
   return (
     <div className="space-y-4">
@@ -107,7 +109,7 @@ export function TeamComparison({
           <h2 className="bc-label mb-3 px-1 text-[0.7rem] text-ink-muted">Also meeting this season</h2>
           <div className="space-y-2.5">
             {comparison.headToHead.map((match) => (
-              <MatchRow key={match.id} match={match} showDate />
+              <MatchRow key={match.id} match={match} renderedAt={renderedAt} showDate />
             ))}
           </div>
         </section>

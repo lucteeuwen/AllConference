@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, type ReactNode } from "react";
 import { heroPhase, minutesUntil, type HeroTiming } from "@/lib/hero";
+import { effectiveStatus, matchClock } from "@/lib/live";
 import { useNow } from "@/lib/use-now";
 
 /**
@@ -35,23 +36,16 @@ export function HeroWindow({
   return phase === "hidden" ? null : children;
 }
 
-export function HeroStatus({
-  timing,
-  minute,
-  renderedAt,
-}: {
-  timing: HeroTiming;
-  minute?: number;
-  renderedAt: number;
-}) {
+export function HeroStatus({ timing, renderedAt }: { timing: HeroTiming; renderedAt: number }) {
   const now = useNow(renderedAt);
   const phase = heroPhase(timing, now);
 
   if (phase === "live") {
+    const clock = matchClock(timing, now);
     return (
       <span className="mb-2 inline-flex items-center gap-1.5 rounded-control bg-win px-3 py-1 text-[0.7rem] font-black text-white tabular-nums">
         <span className="live-dot size-1.5 rounded-full bg-white" />
-        {minute ? `${minute}'` : "In progress"}
+        {clock.halftime ? "Half time" : clock.label}
       </span>
     );
   }
@@ -70,14 +64,43 @@ export function HeroStatus({
   );
 }
 
-/** Re-renders the page from the server every minute, so a box can appear. */
-export function AutoRefresh({ everyMs = 60_000 }: { everyMs?: number }) {
-  const router = useRouter();
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (document.visibilityState === "visible") router.refresh();
-    }, everyMs);
-    return () => clearInterval(timer);
-  }, [everyMs, router]);
-  return null;
+/** The box's score: nil-nil from kickoff until one is posted, "VS" before it. */
+export function HeroScore({
+  timing,
+  homeScore,
+  awayScore,
+  renderedAt,
+}: {
+  timing: HeroTiming;
+  homeScore: number | null;
+  awayScore: number | null;
+  renderedAt: number;
+}) {
+  const { status } = effectiveStatus(timing, useNow(renderedAt));
+  const live = status === "live";
+  const known = homeScore !== null && awayScore !== null;
+  const scores = known ? [homeScore, awayScore] : live ? [0, 0] : null;
+
+  if (!scores) {
+    return (
+      <div className="text-2xl font-black text-white md:text-3xl">{status === "full-time" ? "–" : "VS"}</div>
+    );
+  }
+  return (
+    <>
+      {live ? (
+        <span
+          aria-hidden="true"
+          className="score-bloom pointer-events-none absolute inset-0 flex items-center justify-center text-5xl font-black text-white"
+        >
+          {scores[1]}
+        </span>
+      ) : null}
+      <div className="rise-in text-[2.4rem] font-black text-white tabular-nums md:text-[3rem]">
+        {scores[0]}
+        <span className="mx-2 text-white/30">-</span>
+        {scores[1]}
+      </div>
+    </>
+  );
 }
