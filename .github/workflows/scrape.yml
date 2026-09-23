@@ -2,10 +2,10 @@ name: Scrape CCIW data
 
 on:
   schedule:
-    # Every 5 minutes during the season (Aug–Nov). Each run does a full pass if
-    # the last one is over 14 minutes old, and otherwise only looks at matches
-    # that are on. When one is, the run stays up for 9 minutes polling just that
-    # match every minute (live mode), so the next run is already queued as it ends.
+    # GitHub's own schedule trigger is unreliable below ~15 min on the free
+    # tier (observed 2-5h gaps instead of 5 min), so the real 5-minute tick is
+    # driven externally via workflow_dispatch with auto=true below. These
+    # native schedules are kept as a harmless backstop.
     - cron: "*/5 * * 8-11 *"
     # Rosters and season stats once a day, 5 AM Central.
     - cron: "0 10 * 8-11 *"
@@ -13,6 +13,10 @@ on:
     inputs:
       rosters:
         description: "Also refresh rosters and season stats"
+        type: boolean
+        default: false
+      auto:
+        description: "Internal: set by the external 5-minute pinger, not for manual use"
         type: boolean
         default: false
 
@@ -37,9 +41,14 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
+          MONTH=$(date -u +%-m)
+          if [ "${{ inputs.auto }}" = "true" ] && { [ "$MONTH" -lt 8 ] || [ "$MONTH" -gt 11 ]; }; then
+            echo "Off season, skipping."
+            exit 0
+          fi
           if [ "${{ github.event.schedule }}" = "0 10 * 8-11 *" ] || [ "${{ inputs.rosters }}" = "true" ]; then
             npm run scrape -- --rosters
-          elif [ "${{ github.event.schedule }}" = "*/5 * * 8-11 *" ]; then
+          elif [ "${{ github.event.schedule }}" = "*/5 * * 8-11 *" ] || [ "${{ inputs.auto }}" = "true" ]; then
             npm run scrape -- --auto
           else
             npm run scrape

@@ -20,4 +20,4 @@ jobs:
           curl --fail --silent --show-error \
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-            "$SUPABASE_URL/rest/v1/teams?select=id&limit=1" > /dev/null
+            "$SUPABASE_URL/rest/v1/teams?select=slug&limit=1" > /dev/null

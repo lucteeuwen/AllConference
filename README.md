@@ -80,6 +80,14 @@ npm run dev
 from August to November, and with `--rosters` once a day. It needs the
 repository secrets `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
 
+GitHub's native `schedule:` trigger is unreliable below ~15 minutes on public
+repos (observed gaps of hours instead of 5 minutes), so the real 5-minute tick
+is driven by an external cron service (e.g. cron-job.org) calling
+`POST /repos/lucteeuwen/AllConference/actions/workflows/scrape.yml/dispatches`
+with `{"ref":"main","inputs":{"auto":"true"}}` and a repo-scoped PAT
+(`Actions: Read and write`). The native `schedule:` entries stay in the
+workflow as a harmless backstop.
+
 **Live mode** covers a match from 15 minutes before kickoff until its box score
 is read, or 150 minutes after kickoff. Each minute it re-reads only the feeds of
 the schools in that match and its box score, and writes only the columns a game
