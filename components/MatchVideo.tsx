@@ -1,8 +1,10 @@
 import type { MatchVideo as Video } from "@/lib/types";
+import { VideoLink } from "@/components/VideoLink";
 
 /**
  * A specific YouTube video plays inline. Everything else opens the provider in
- * a new tab, since those players need a subscription. A link that isn't this
+ * a new tab (the same tab on mobile), since those players need a subscription.
+ * A link that isn't this
  * game's own stream is presented as the platform's page, with a note, rather
  * than as the game.
  */
@@ -24,10 +26,8 @@ export function MatchVideo({ video, live }: { video: Video; live: boolean }) {
   }
 
   const link = (
-    <a
+    <VideoLink
       href={video.url}
-      target="_blank"
-      rel="noopener noreferrer"
       className="bc-label inline-flex items-center gap-2 rounded-control bg-accent px-4 py-2.5 text-[0.72rem] text-white transition hover:opacity-90"
     >
       <svg viewBox="0 0 16 16" className="size-3.5" fill="currentColor" aria-hidden="true">
@@ -35,8 +35,8 @@ export function MatchVideo({ video, live }: { video: Video; live: boolean }) {
       </svg>
       {video.label}
       {live && video.exact ? <span className="live-dot size-1.5 rounded-full bg-white" /> : null}
-      <span className="sr-only">(opens in a new tab)</span>
-    </a>
+      <span className="sr-only">(external link)</span>
+    </VideoLink>
   );
 
   if (video.exact) return link;

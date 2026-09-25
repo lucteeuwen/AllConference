@@ -27,3 +27,25 @@ export const LIVE = {
   /** A full pass (every feed, the bracket, logos) is at most this stale. */
   fullEveryMs: 14 * 60_000,
 };
+
+/**
+ * The CCIW Network (cciwnetwork.com) is a portal over Hudl vCloud. Its config
+ * lists these nine school sites; section 103 is men's soccer.
+ */
+export const BROADCASTS = {
+  api: "https://vcloud.hudl.com/api/viewer/broadcast",
+  portal: "https://cciwnetwork.com",
+  section: 103,
+  /** Each school's site on the network, and the team it is. */
+  sites: {
+    ACVikings: "augustana",
+    carrollpioneers: "carroll",
+    carthage: "carthage",
+    elmhurst: "elmhurst",
+    IWUTitans: "illinois-wesleyan",
+    millikinathletics: "millikin",
+    northcentralcardinals: "north-central",
+    northpark: "north-park",
+    wheatoncollege: "wheaton",
+  } as Record<string, string>,
+};
