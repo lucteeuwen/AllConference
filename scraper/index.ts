@@ -1,6 +1,7 @@
 import "./env";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { LIVE, SEASON, SEASON_START } from "./config";
+import { fetchBroadcasts, pickBroadcast } from "./broadcasts";
 import { createDb, must, upsertInChunks } from "./db";
 import { fetchJson, fetchText, requestsMade, unreachableHosts } from "./http";
 import { cacheLogo } from "./logos";
@@ -115,6 +116,43 @@ async function refreshFeeds(ctx: Context, schools: TeamRow[]): Promise<void> {
   );
 }
 
+/**
+ * Links each game to its own CCIW Network broadcast. When the network can't be
+ * read, `broadcast_url` is left off every row so what is stored stays as it was.
+ */
+async function attachBroadcasts(ctx: Context): Promise<void> {
+  let broadcasts;
+  try {
+    broadcasts = await fetchBroadcasts();
+  } catch (error) {
+    note(ctx, `WARN CCIW Network broadcasts unavailable, keeping stored links: ${error instanceof Error ? error.message : error}`);
+    return;
+  }
+
+  // An empty list means the API changed, not that every game lost its broadcast.
+  if (broadcasts.length === 0) {
+    note(ctx, "WARN CCIW Network returned no broadcasts, keeping stored links");
+    return;
+  }
+
+  const teams = ctx.teams.map((team) => ({ slug: team.slug, name: team.name, fullName: team.full_name }));
+  let resolved = 0;
+  let expected = 0;
+  for (const match of ctx.matches) {
+    const { url, candidates } = pickBroadcast(match, broadcasts, teams);
+    match.broadcast_url = url;
+    if (url) resolved++;
+    if (candidates > 1) note(ctx, `${match.id}: ${candidates} broadcasts fit, using ${url}`);
+    // A game a CCIW school hosts should be on its own network.
+    const host = ctx.conference.some((team) => team.slug === match.home_slug);
+    if (host && match.status !== "final" && match.status !== "canceled") {
+      expected++;
+      if (!url) note(ctx, `${match.id}: no CCIW Network broadcast (yet)`);
+    }
+  }
+  note(ctx, `CCIW Network: ${broadcasts.length} broadcasts, linked ${resolved} of ${ctx.matches.length} games (${expected} upcoming home games expected)`);
+}
+
 async function syncMatches(ctx: Context): Promise<void> {
   const resolver = new TeamResolver(ctx.teams);
   const { matches, placeholders } = mergeGames([...ctx.raws.values()].flat(), resolver);
@@ -183,6 +221,7 @@ async function syncMatches(ctx: Context): Promise<void> {
 
   const now = new Date().toISOString();
   ctx.matches = bracket.matches;
+  await attachBroadcasts(ctx);
 
   if (options.dryRun) return;
 
@@ -687,6 +726,7 @@ function report(ctx: Context) {
   console.log(`conference: ${ctx.matches.filter((match) => match.is_conference).length}`);
   console.log(`final: ${ctx.matches.filter((match) => match.status === "final").length}`);
   console.log(`with video: ${ctx.matches.filter((match) => match.video_url).length}`);
+  console.log(`with CCIW Network broadcast: ${ctx.matches.filter((match) => match.broadcast_url).length}`);
   const tbc = ctx.matches.filter((match) => !match.home_slug || !match.away_slug);
   console.log(`TBC: ${tbc.map((match) => `${match.id} (${match.home_placeholder ?? match.home_slug} v ${match.away_placeholder ?? match.away_slug})`).join(", ")}`);
   if (options.json) console.log(JSON.stringify(ctx.matches, null, 2));

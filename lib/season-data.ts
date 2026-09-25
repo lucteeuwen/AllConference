@@ -72,6 +72,7 @@ type MatchRow = {
   attendance: number | null;
   referee: string | null;
   video_url: string | null;
+  broadcast_url: string | null;
   boxscore_url: string | null;
   recap_url: string | null;
 };
@@ -151,7 +152,8 @@ function toMatch(row: MatchRow, teams: Map<string, Team>): Match {
     attendance: row.attendance ?? undefined,
     referee: row.referee ?? undefined,
     events: [],
-    video: classifyVideo(row.video_url),
+    // The game's own CCIW Network broadcast, when found; else the school's link.
+    video: classifyVideo(row.broadcast_url ?? row.video_url),
     boxscoreUrl: row.boxscore_url ?? undefined,
     recapUrl: row.recap_url ?? undefined,
   };
@@ -174,7 +176,7 @@ export const getSeasonData = cache(async (): Promise<SeasonData> => {
       db
         .from("matches")
         .select(
-          "id, date, finished_at, status, minute, started_at, home_slug, away_slug, home_placeholder, away_placeholder, home_score, away_score, home_pens, away_pens, venue, timezone, time_tbd, is_conference, stage, bracket_slot, attendance, referee, video_url, boxscore_url, recap_url",
+          "id, date, finished_at, status, minute, started_at, home_slug, away_slug, home_placeholder, away_placeholder, home_score, away_score, home_pens, away_pens, venue, timezone, time_tbd, is_conference, stage, bracket_slot, attendance, referee, video_url, broadcast_url, boxscore_url, recap_url",
         )
         .eq("season", SEASON)
         .order("date")

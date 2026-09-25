@@ -44,6 +44,17 @@ Most home games stream on the CCIW Network (Hudl TV, subscription), some on
 YouTube or FloCollege. The match page embeds a specific YouTube video and links
 to everything else.
 
+Schools usually paste only their team page on the network into SIDEARM, so the
+full scrape also reads the network's own broadcast list (Hudl vCloud's public
+`/api/viewer/broadcast`, men's soccer section, the nine school sites in
+`scraper/config.ts`) and links each game to its exact broadcast
+(`cciwnetwork.com/<school>/?B=<id>`, stored in `matches.broadcast_url`). A
+broadcast counts when it is within 12 hours of kickoff and names both schools
+(the host may be implied by the site it is on); clips such as postgame
+interviews are ignored. The site shows `broadcast_url` first and falls back to
+the school's link (`video_url`) when there is none, e.g. games hosted by
+non-CCIW schools. If the network can't be read, stored links are left alone.
+
 ### Logos
 
 Team logos are taken from the SIDEARM feeds, copied once into the public

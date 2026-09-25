@@ -156,7 +156,7 @@ function normalize(text: string): string {
 }
 
 /** Spellings a title may use for a team: "Dubuque" for "University of Dubuque". */
-function aliasesOf(team: Team): string[] {
+function aliasesOf(team: NamedTeam): string[] {
   const out = new Set<string>();
   for (const name of [team.name, team.fullName]) {
     const full = normalize(name).trim();
@@ -168,22 +168,22 @@ function aliasesOf(team: Team): string[] {
   return [...out];
 }
 
+type NamedTeam = Pick<Team, "slug" | "name" | "fullName">;
+
 /** Teams the database holds under two slugs. */
 const SAME_TEAM: string[][] = [["washu", "washington-in-st-louis"]];
 
 export type TitleVerdict = "match" | "mismatch" | "unknown";
 
-/**
- * Does a broadcast title read like this game? "mismatch" for a women's game or
- * a title that names a team that isn't playing; "unknown" when it names no team
- * we know (nothing to confirm it by).
- */
-export function titleVerdict(title: string, playing: string[], teams: Team[]): TitleVerdict {
-  if (/\bwomen'?s?\b|\bwomens\b/i.test(title.replace(/&#0?39;/g, "'"))) return "mismatch";
-
+/** The slugs a game's sides answer to, counting a team the database holds twice. */
+function ownSlugs(playing: string[]): Set<string> {
   const own = new Set(playing);
   for (const group of SAME_TEAM) if (group.some((slug) => own.has(slug))) group.forEach((slug) => own.add(slug));
+  return own;
+}
 
+/** The teams a title names, one set of slugs per name found (a name may fit two schools). */
+function titleMentions(title: string, teams: NamedTeam[]): Set<string>[] {
   const byAlias = new Map<string, Set<string>>();
   for (const team of teams) {
     // Bracket stand-ins ("Semifinals", "CCIW 1st Round") are not schools.
@@ -204,9 +204,36 @@ export function titleVerdict(title: string, playing: string[], teams: Team[]): T
     mentions.push(byAlias.get(alias) as Set<string>);
     rest = rest.split(needle).join(" ");
   }
+  return mentions;
+}
 
+/**
+ * Does a broadcast title read like this game? "mismatch" for a women's game or
+ * a title that names a team that isn't playing; "unknown" when it names no team
+ * we know (nothing to confirm it by).
+ */
+export function titleVerdict(title: string, playing: string[], teams: NamedTeam[]): TitleVerdict {
+  if (/\bwomen'?s?\b|\bwomens\b/i.test(title.replace(/&#0?39;/g, "'"))) return "mismatch";
+
+  const own = ownSlugs(playing);
+  const mentions = titleMentions(title, teams);
   if (mentions.length === 0) return "unknown";
   const isOurs = (slugs: Set<string>) => [...slugs].some((slug) => own.has(slug));
   if (mentions.some((slugs) => !isOurs(slugs))) return "mismatch";
   return "match";
+}
+
+/**
+ * A title that names both sides and no one else, so it is this game and not one
+ * of the school's others. `implied` is a side the title may leave out because
+ * the page it is on already says whose it is.
+ */
+export function titleNamesBoth(title: string, playing: string[], teams: NamedTeam[], implied?: string): boolean {
+  if (titleVerdict(title, playing, teams) === "mismatch") return false;
+  const mentions = titleMentions(title, teams);
+  return playing.every((slug) => {
+    if (slug === implied) return true;
+    const own = ownSlugs([slug]);
+    return mentions.some((slugs) => [...slugs].some((candidate) => own.has(candidate)));
+  });
 }
