@@ -15,7 +15,15 @@ type Entry = { row: StandingsRow; name: string };
 
 function entry(
   name: string,
-  parts: { conference?: RecordLine; overall?: RecordLine; home?: RecordLine; away?: RecordLine; form?: Result[] },
+  parts: {
+    conference?: RecordLine;
+    overall?: RecordLine;
+    home?: RecordLine;
+    away?: RecordLine;
+    homeConference?: RecordLine;
+    awayConference?: RecordLine;
+    form?: Result[];
+  },
 ): Entry {
   return {
     name,
@@ -25,6 +33,8 @@ function entry(
       overall: parts.overall ?? record(),
       home: parts.home ?? record(),
       away: parts.away ?? record(),
+      homeConference: parts.homeConference ?? record(),
+      awayConference: parts.awayConference ?? record(),
       form: parts.form ?? [],
     },
   };
@@ -44,6 +54,8 @@ describe("recordFor", () => {
     overall: record(2),
     home: record(3),
     away: record(4),
+    homeConference: record(5),
+    awayConference: record(6),
   }).row;
 
   it("shows the conference record for All once conference play has started", () => {
@@ -54,8 +66,13 @@ describe("recordFor", () => {
     expect(recordFor(row, "all", false).w).toBe(2);
   });
 
-  it("uses the home and away records whatever the state of the conference", () => {
-    expect(recordFor(row, "home", true).w).toBe(3);
+  it("shows the conference-only home/away record once conference play has started", () => {
+    expect(recordFor(row, "home", true).w).toBe(5);
+    expect(recordFor(row, "away", true).w).toBe(6);
+  });
+
+  it("shows every home/away game before conference play, so there is something to sort", () => {
+    expect(recordFor(row, "home", false).w).toBe(3);
     expect(recordFor(row, "away", false).w).toBe(4);
   });
 });
@@ -119,14 +136,24 @@ describe("sortEntries", () => {
     expect(order(early, "gf", "all", true)).toBe("a,b,c");
   });
 
-  it("sorts Home and Away on their own records", () => {
+  it("sorts Home and Away on their own conference-only records once conference play has started", () => {
+    const rows = [
+      entry("a", { homeConference: record(3), awayConference: record(0) }),
+      entry("b", { homeConference: record(1), awayConference: record(2) }),
+      entry("c", { homeConference: record(2), awayConference: record(1) }),
+    ];
+    expect(order(rows, "w", "home")).toBe("a,c,b");
+    expect(order(rows, "w", "away")).toBe("b,c,a");
+  });
+
+  it("sorts Home and Away on every game before conference play has started", () => {
     const rows = [
       entry("a", { home: record(3), away: record(0) }),
       entry("b", { home: record(1), away: record(2) }),
       entry("c", { home: record(2), away: record(1) }),
     ];
-    expect(order(rows, "w", "home")).toBe("a,c,b");
-    expect(order(rows, "w", "away")).toBe("b,c,a");
+    expect(order(rows, "w", "home", false)).toBe("a,c,b");
+    expect(order(rows, "w", "away", false)).toBe("b,c,a");
   });
 
   it("sorts by form regardless of the split, best form first", () => {

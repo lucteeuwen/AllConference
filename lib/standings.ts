@@ -58,17 +58,18 @@ export type SortColumn = "pts" | "w" | "l" | "d" | "gf" | "ga" | "gd";
 export type SortKey = "rank" | "form" | SortColumn;
 
 /**
- * The record a split shows. "All" is the conference record once conference play
+ * The record a split shows. Every split is conference-only once conference play
  * has started, which is what the standings rank on; before that every team sits
- * on zero, so it shows every game played so far instead.
+ * on zero, so each split shows every game played so far instead (all games,
+ * or all home/away games).
  */
 export function recordFor(
   row: StandingsRow,
   split: StandingsSplit,
   conferenceStarted: boolean,
 ): RecordLine {
-  if (split === "home") return row.home;
-  if (split === "away") return row.away;
+  if (split === "home") return conferenceStarted ? row.homeConference : row.home;
+  if (split === "away") return conferenceStarted ? row.awayConference : row.away;
   return conferenceStarted ? row.conference : row.overall;
 }
 
@@ -140,6 +141,8 @@ export function computeStandings(
         overall: emptyRecord(),
         home: emptyRecord(),
         away: emptyRecord(),
+        homeConference: emptyRecord(),
+        awayConference: emptyRecord(),
         form: [],
       },
     ]),
@@ -163,7 +166,10 @@ export function computeStandings(
 
       addResult(row.overall, own, other);
       addResult(row[side], own, other);
-      if (conference) addResult(row.conference, own, other);
+      if (conference) {
+        addResult(row.conference, own, other);
+        addResult(side === "home" ? row.homeConference : row.awayConference, own, other);
+      }
       row.form.push(own > other ? "W" : own < other ? "L" : "D");
     }
   }

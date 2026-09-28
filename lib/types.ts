@@ -145,6 +145,9 @@ export type StandingsRow = {
   overall: RecordLine;
   home: RecordLine;
   away: RecordLine;
+  /** Home/away, restricted to conference games; what the Home/Away splits show once conference play starts. */
+  homeConference: RecordLine;
+  awayConference: RecordLine;
   /** Most recent result last. */
   form: Result[];
 };

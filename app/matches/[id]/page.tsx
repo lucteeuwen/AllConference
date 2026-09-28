@@ -91,7 +91,7 @@ function LineupColumn({ side, lineup }: { side: MatchSide; lineup: Lineup }) {
               {player.number ?? ""}
             </span>
             <span className="truncate font-medium text-ink">{player.name}</span>
-            <span className="ml-auto shrink-0 text-[0.68rem] font-semibold text-ink-faint">
+            <span className="ml-auto w-5 shrink-0 text-left text-[0.68rem] font-semibold text-ink-faint">
               {player.position ?? ""}
             </span>
           </li>

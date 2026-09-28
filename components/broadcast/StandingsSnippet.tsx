@@ -1,8 +1,9 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { TeamBadge } from "@/components/TeamBadge";
 import { ExpandableRows } from "@/components/ExpandableRows";
 import { FormDots } from "@/components/FormDots";
-import { played } from "@/lib/selectors";
+import { played, type ScorerStat } from "@/lib/selectors";
 import { recordFor } from "@/lib/standings";
 import type { HomeData } from "@/lib/home";
 
@@ -51,13 +52,37 @@ export function StandingsSnippet({
   );
 }
 
+function StatColumn({
+  value,
+  label,
+  active,
+}: {
+  value: number;
+  label: string;
+  /** The stat the list is ranked on. */
+  active: boolean;
+}) {
+  return (
+    <span className="w-8 text-center">
+      <span
+        className={`block text-[0.95rem] tabular-nums ${active ? "font-black text-accent" : "font-bold text-ink-muted"}`}
+      >
+        {value}
+      </span>
+      <span className="bc-label block text-[0.6rem] text-ink-faint">{label}</span>
+    </span>
+  );
+}
+
 function ScorerRow({
   line,
   rank,
+  stat,
   bordered,
 }: {
   line: HomeData["scorers"][number];
   rank: number;
+  stat: ScorerStat;
   /** Always draw the divider, when something follows the row. */
   bordered: boolean;
 }) {
@@ -67,37 +92,51 @@ function ScorerRow({
     >
       <span className="w-4 text-[0.75rem] font-black text-ink-faint tabular-nums">{rank}</span>
       <TeamBadge team={line.team} size="xs" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[0.82rem] font-bold text-ink">{line.player.name}</span>
-        <span className="block text-[0.7rem] text-ink-faint">
-          {line.player.stats.goals}G · {line.player.stats.assists}A
-        </span>
+      <span className="min-w-0 flex-1 truncate text-[0.82rem] font-bold text-ink">
+        {line.player.name}
       </span>
-      <span className="text-[0.95rem] font-black text-accent tabular-nums">{line.points}</span>
+      <StatColumn value={line.player.stats.goals} label="G" active={stat === "goals"} />
+      <StatColumn value={line.player.stats.assists} label="A" active={stat === "assists"} />
     </div>
   );
 }
 
-/** With `initial`, only that many rows show and the rest sit behind "Show more". */
+/**
+ * With `initial`, only that many rows show and the rest sit behind "Show more".
+ * `stat` is what the list is ranked on, and is picked out in accent; `header`
+ * sits in a bar above the rows.
+ */
 export function ScorersSnippet({
   scorers,
   initial,
+  stat = "goals",
+  header,
 }: {
   scorers: HomeData["scorers"];
   initial?: number;
+  stat?: ScorerStat;
+  header?: ReactNode;
 }) {
   const split = initial !== undefined && scorers.length > initial ? initial : scorers.length;
   const rest = scorers.slice(split);
 
   return (
     <div className="bc-card bc-flush overflow-hidden">
+      {header ? <div className="flex flex-wrap items-center gap-3 border-b border-line p-3">{header}</div> : null}
       {scorers.slice(0, split).map((line, index) => (
-        <ScorerRow key={line.player.id} line={line} rank={index + 1} bordered={rest.length > 0} />
+        <ScorerRow
+          key={line.player.id}
+          line={line}
+          rank={index + 1}
+          stat={stat}
+          bordered={rest.length > 0}
+        />
       ))}
       {rest.length > 0 ? (
-        <ExpandableRows>
+        // Keyed on the stat so a fresh ranking starts collapsed rather than inheriting "Show more".
+        <ExpandableRows key={stat}>
           {rest.map((line, index) => (
-            <ScorerRow key={line.player.id} line={line} rank={split + index + 1} bordered />
+            <ScorerRow key={line.player.id} line={line} rank={split + index + 1} stat={stat} bordered />
           ))}
         </ExpandableRows>
       ) : null}
