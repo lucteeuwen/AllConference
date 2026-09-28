@@ -47,39 +47,46 @@ export function getRoster(data: SeasonData, slug: string): Player[] {
 export type ScorerLine = {
   player: Player;
   team: Team;
-  points: number;
 };
 
+export type ScorerStat = "goals" | "assists";
+
 /**
- * Conference scoring leaders. Points follow the NCAA convention of two for a
- * goal and one for an assist, which is how college soccer ranks its leaders.
+ * Conference scoring leaders, ranked on one stat with the other breaking ties.
  * These are season totals, non-conference games included, as the schools
  * publish them.
  */
-function rankScorers(data: SeasonData, keep: (player: Player) => boolean): ScorerLine[] {
+function rankScorers(
+  data: SeasonData,
+  stat: ScorerStat,
+  keep: (player: Player) => boolean,
+): ScorerLine[] {
+  const other: ScorerStat = stat === "goals" ? "assists" : "goals";
   const teams = new Map(data.conference.map((team) => [team.slug, team]));
   return data.players
     .flatMap((player) => {
       const team = teams.get(player.teamSlug);
-      return team && keep(player)
-        ? [{ player, team, points: player.stats.goals * 2 + player.stats.assists }]
-        : [];
+      return team && keep(player) ? [{ player, team }] : [];
     })
     .sort(
       (a, b) =>
-        b.points - a.points ||
-        b.player.stats.goals - a.player.stats.goals ||
+        b.player.stats[stat] - a.player.stats[stat] ||
+        b.player.stats[other] - a.player.stats[other] ||
         a.player.name.localeCompare(b.player.name),
     );
 }
 
+/** The home page's leaders: anyone who has scored or assisted, best scorers first. */
 export function getTopScorers(data: SeasonData, limit = 5): ScorerLine[] {
-  return rankScorers(data, (player) => player.stats.goals * 2 + player.stats.assists > 0).slice(0, limit);
+  return rankScorers(data, "goals", (player) => player.stats.goals + player.stats.assists > 0).slice(
+    0,
+    limit,
+  );
 }
 
-/** Every conference player with at least one goal, ranked like the leaders. */
-export function getGoalScorers(data: SeasonData): ScorerLine[] {
-  return rankScorers(data, (player) => player.stats.goals >= 1);
+/** Every conference player with at least one of `stat`, ranked on it. */
+export function getScorersBy(data: SeasonData, stat: ScorerStat): ScorerLine[] {
+  return rankScorers(data, stat, (player) => player.stats[stat] >= 1);
 }
 
 export function matchesForTeam(data: SeasonData, slug: string): Match[] {

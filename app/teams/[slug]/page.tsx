@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BackButton } from "@/components/BackButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -9,6 +10,8 @@ import { ScoreboardRail } from "@/components/broadcast/ScoreboardRail";
 import { Tabs } from "@/components/Tabs";
 import { TeamBadge } from "@/components/TeamBadge";
 import { FormDots } from "@/components/FormDots";
+import { PlayerLink } from "@/components/PlayerLink";
+import { playerHref } from "@/lib/players";
 import { buildRailTiles } from "@/lib/rail";
 import { SEASON_LABEL } from "@/lib/season";
 import { recordFor } from "@/lib/standings";
@@ -187,7 +190,9 @@ export default async function TeamPage({ params, searchParams }: Props) {
                             <td className="bc-row pl-4 font-bold text-ink-faint tabular-nums">
                               {player.number ?? ""}
                             </td>
-                            <td className="bc-row font-semibold text-ink">{player.name}</td>
+                            <td className="bc-row font-semibold text-ink">
+                              <PlayerLink player={player}>{player.name}</PlayerLink>
+                            </td>
                             <td className="bc-row text-ink-muted">{player.year}</td>
                             <td className="bc-row text-ink-muted">{player.hometown}</td>
                             <td className="bc-row text-center text-ink-muted tabular-nums">
@@ -207,24 +212,26 @@ export default async function TeamPage({ params, searchParams }: Props) {
 
                   <ul className="sm:hidden">
                     {group.map((player) => (
-                      <li
-                        key={player.id}
-                        className="bc-row flex items-center gap-3 border-t border-line/70 px-4"
-                      >
-                        <span className="w-7 shrink-0 text-center text-[0.95rem] font-black text-ink-faint tabular-nums">
-                          {player.number ?? ""}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[0.85rem] font-semibold text-ink">
-                            {player.name}
-                          </p>
-                          <p className="truncate text-[0.72rem] text-ink-muted">
-                            {[player.year, player.hometown].filter(Boolean).join(" · ")}
-                          </p>
-                        </div>
-                        <span className="shrink-0 text-right text-[0.72rem] text-ink-muted tabular-nums">
-                          {player.stats.goals}G {player.stats.assists}A
-                        </span>
+                      <li key={player.id} className="border-t border-line/70">
+                        <Link
+                          href={playerHref(player)}
+                          className="bc-row flex items-center gap-3 px-4 transition active:bg-ground"
+                        >
+                          <span className="w-7 shrink-0 text-center text-[0.95rem] font-black text-ink-faint tabular-nums">
+                            {player.number ?? ""}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[0.85rem] font-semibold text-ink">
+                              {player.name}
+                            </p>
+                            <p className="truncate text-[0.72rem] text-ink-muted">
+                              {[player.year, player.hometown].filter(Boolean).join(" · ")}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-right text-[0.72rem] text-ink-muted tabular-nums">
+                            {player.stats.goals}G {player.stats.assists}A
+                          </span>
+                        </Link>
                       </li>
                     ))}
                   </ul>

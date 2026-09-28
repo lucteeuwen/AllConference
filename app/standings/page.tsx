@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Lockup, SectionHeader } from "@/components/broadcast/Lockup";
-import { ScorersSnippet } from "@/components/broadcast/StandingsSnippet";
+import { ScoringLeaders } from "@/components/ScoringLeaders";
 import { StandingsTable, type StandingsEntry } from "@/components/StandingsTable";
 import { Reveal } from "@/components/broadcast/Reveal";
 import { Bracket } from "@/components/Bracket";
-import { getGoalScorers, standingsLines, tableView } from "@/lib/selectors";
+import { getScorersBy, standingsLines, tableView } from "@/lib/selectors";
 import { SEASON_LABEL } from "@/lib/season";
 import { getSeasonData } from "@/lib/season-data";
 
@@ -18,7 +18,6 @@ export default async function StandingsPage() {
   const data = await getSeasonData();
   const { started, lines } = tableView(standingsLines(data));
   const entries: StandingsEntry[] = lines.map(({ row, team }) => ({ row, team }));
-  const scorers = getGoalScorers(data);
 
   return (
     <div className="bc-stack">
@@ -64,7 +63,11 @@ export default async function StandingsPage() {
       <Reveal>
         <section id="scoring-leaders" className="scroll-mt-6">
           <SectionHeader title="Scoring leaders" />
-          <ScorersSnippet scorers={scorers} initial={8} />
+          <ScoringLeaders
+            goals={getScorersBy(data, "goals")}
+            assists={getScorersBy(data, "assists")}
+            initial={8}
+          />
         </section>
       </Reveal>
     </div>

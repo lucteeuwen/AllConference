@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { FormDots } from "@/components/FormDots";
 import { MatchRow } from "@/components/broadcast/MatchRow";
 import { TeamBadge } from "@/components/TeamBadge";
@@ -39,6 +40,15 @@ function Bars({ row }: { row: StatRow }) {
   );
 }
 
+function Value({ text, href, className }: { text: string; href?: string; className: string }) {
+  if (!href) return <span className={className}>{text}</span>;
+  return (
+    <Link href={href} className={`${className} underline-offset-2 transition hover:text-accent hover:underline`}>
+      {text}
+    </Link>
+  );
+}
+
 function Row({ row }: { row: StatRow }) {
   const winner = favoured(row);
   const value = (side: "home" | "away") =>
@@ -48,8 +58,8 @@ function Row({ row }: { row: StatRow }) {
     <div className="border-b border-line py-2.5 last:border-0">
       <p className="bc-label text-center text-[0.62rem] text-ink-faint">{row.label}</p>
       <div className="mt-1 grid grid-cols-2 gap-3">
-        <span className={`${value("home")} text-left`}>{row.home}</span>
-        <span className={`${value("away")} text-right`}>{row.away}</span>
+        <Value text={row.home} href={row.homeHref} className={`${value("home")} text-left`} />
+        <Value text={row.away} href={row.awayHref} className={`${value("away")} text-right`} />
       </div>
       <Bars row={row} />
     </div>

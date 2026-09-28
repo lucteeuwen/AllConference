@@ -1,8 +1,10 @@
+import { Fragment } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BackButton } from "@/components/BackButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DetailRow } from "@/components/DetailRow";
+import { EventIcon } from "@/components/EventIcon";
 import { KickoffRows, KickoffValue } from "@/components/matches/KickoffRows";
 import { WashHero } from "@/components/broadcast/WashHero";
 import { OverlapCard } from "@/components/broadcast/OverlapCard";
@@ -11,12 +13,14 @@ import { sideName } from "@/components/broadcast/MatchRow";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { MatchHeroScore } from "@/components/matches/MatchHeroScore";
 import { MatchVideo } from "@/components/MatchVideo";
+import { PlayerLink } from "@/components/PlayerLink";
 import { TeamBadge } from "@/components/TeamBadge";
 import { TeamComparison } from "@/components/TeamComparison";
 import { Tabs } from "@/components/Tabs";
 import { compareTeams } from "@/lib/comparison";
 import { getCardCounts, getSeasonData, withDetails } from "@/lib/season-data";
 import { timingOf } from "@/lib/hero";
+import { playerLookup, splitAssists, type PlayerLookup } from "@/lib/players";
 import { effectiveStatus } from "@/lib/live";
 import { renderedAt } from "@/lib/rendered-at";
 import { verifyVideo } from "@/lib/video-verify";
@@ -40,43 +44,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-/**
- * Drawn rather than set in emoji: emoji depend on a font the machine may not
- * have, and these need to read the same everywhere.
- */
-function EventIcon({ type }: { type: MatchEvent["type"] }) {
-  if (type === "yellow" || type === "red") {
-    return (
-      <span
-        aria-hidden="true"
-        className="block h-3.5 w-2.5 shrink-0 rounded-[2px]"
-        style={{ background: type === "yellow" ? "#eab308" : "var(--loss)" }}
-      />
-    );
-  }
-  return (
-    <svg viewBox="0 0 16 16" className="size-3.5 shrink-0 text-ink" aria-hidden="true">
-      <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M8 3.4l3 2.2-1.15 3.55h-3.7L5 5.6z" fill="currentColor" />
-    </svg>
-  );
-}
-
 /** Some schools leave the player blank, which their box score prints as "0". */
 const hasName = (name: string) => !/^(unknown|\d*)$/i.test(name.trim());
 
-function eventLabel(event: MatchEvent): string {
+function EventLabel({ event, lookup }: { event: MatchEvent; lookup: PlayerLookup }) {
   const player = event.playerName;
   const named = hasName(player);
-  if (event.type === "yellow") return named ? `${player} booked` : "Yellow card";
-  if (event.type === "red") return named ? `${player} sent off` : "Red card";
-  if (event.type === "penalty") return named ? `${player} (pen.)` : "Penalty goal";
+  const name = <PlayerLink player={lookup(event.teamSlug, player)}>{player}</PlayerLink>;
+  if (event.type === "yellow") return named ? <>{name} booked</> : "Yellow card";
+  if (event.type === "red") return named ? <>{name} sent off</> : "Red card";
+  if (event.type === "penalty") return named ? <>{name} (pen.)</> : "Penalty goal";
   if (event.type === "own-goal") return "Own goal";
   if (!named) return "Goal";
-  return event.assistName && hasName(event.assistName) ? `${player}, assist ${event.assistName}` : player;
+  const assists = splitAssists(event.assistName ?? "").filter(hasName);
+  if (assists.length === 0) return name;
+  return (
+    <>
+      {name}, assist{" "}
+      {assists.map((assist, index) => (
+        <Fragment key={index}>
+          {index > 0 ? " & " : null}
+          <PlayerLink player={lookup(event.teamSlug, assist)}>{assist}</PlayerLink>
+        </Fragment>
+      ))}
+    </>
+  );
 }
 
-function LineupColumn({ side, lineup }: { side: MatchSide; lineup: Lineup }) {
+function LineupColumn({ side, lineup, lookup }: { side: MatchSide; lineup: Lineup; lookup: PlayerLookup }) {
   return (
     <div>
       <div className="mb-3 flex items-center gap-2.5">
@@ -90,8 +85,10 @@ function LineupColumn({ side, lineup }: { side: MatchSide; lineup: Lineup }) {
             <span className="w-6 shrink-0 text-right font-bold text-ink-faint tabular-nums">
               {player.number ?? ""}
             </span>
-            <span className="truncate font-medium text-ink">{player.name}</span>
-            <span className="ml-auto shrink-0 text-[0.68rem] font-semibold text-ink-faint">
+            <PlayerLink player={lookup(side.teamSlug, player.name)} className="truncate font-medium text-ink">
+              {player.name}
+            </PlayerLink>
+            <span className="ml-auto w-5 shrink-0 text-left text-[0.68rem] font-semibold text-ink-faint">
               {player.position ?? ""}
             </span>
           </li>
@@ -106,7 +103,9 @@ function LineupColumn({ side, lineup }: { side: MatchSide; lineup: Lineup }) {
                 <span className="w-6 shrink-0 text-right font-bold text-ink-faint tabular-nums">
                   {player.number ?? ""}
                 </span>
-                <span className="truncate">{player.name}</span>
+                <PlayerLink player={lookup(side.teamSlug, player.name)} className="truncate">
+                  {player.name}
+                </PlayerLink>
               </li>
             ))}
           </ul>
@@ -159,6 +158,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
   const active = tabs.some((tab) => tab.key === requested) ? (requested as string) : "details";
 
   const standings = standingsLines(data);
+  const lookup = playerLookup(data.players);
 
   return (
     <div className="bc-stack pt-4 md:pt-6">
@@ -283,7 +283,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
                         </span>
                         <EventIcon type={event.type} />
                         <span className="min-w-0 flex-1 truncate text-[0.78rem] text-ink">
-                          {eventLabel(event)}
+                          <EventLabel event={event} lookup={lookup} />
                         </span>
                       </li>
                     );
@@ -297,8 +297,8 @@ export default async function MatchPage({ params, searchParams }: Props) {
         {active === "lineups" && match.lineups ? (
           <div className="bc-card bc-pad bc-shadow">
             <div className="grid gap-8 md:grid-cols-2">
-              <LineupColumn side={match.home} lineup={match.lineups.home} />
-              <LineupColumn side={match.away} lineup={match.lineups.away} />
+              <LineupColumn side={match.home} lineup={match.lineups.home} lookup={lookup} />
+              <LineupColumn side={match.away} lineup={match.lineups.away} lookup={lookup} />
             </div>
           </div>
         ) : null}

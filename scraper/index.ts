@@ -454,6 +454,8 @@ async function syncRosters(ctx: Context): Promise<void> {
       }
       const stats = statsHtml ? parseStats(statsHtml) : [];
       const now = new Date().toISOString();
+      const base = team.sidearm_base_url;
+      const absolute = (path: string | null) => (path ? new URL(path, base).href : null);
 
       const rows = roster.map((player) => {
         const line =
@@ -474,6 +476,29 @@ async function syncRosters(ctx: Context): Promise<void> {
           gs: line?.gs ?? 0,
           goals: line?.goals ?? 0,
           assists: line?.assists ?? 0,
+          photo_url: absolute(player.photoPath),
+          bio_url: absolute(player.bioPath),
+          position_long: player.positionLong || null,
+          weight: player.weight || null,
+          high_school: player.highSchool || null,
+          previous_school: player.previousSchool || null,
+          major: player.major || null,
+          captain: player.captain,
+          minutes: line?.minutes ?? null,
+          shots: line?.shots ?? null,
+          shots_on_goal: line?.shotsOnGoal ?? null,
+          game_winners: line?.gameWinners ?? null,
+          pk_goals: line?.pkGoals ?? null,
+          pk_attempts: line?.pkAttempts ?? null,
+          yellow_cards: line?.yellow ?? null,
+          red_cards: line?.red ?? null,
+          gk_minutes: line?.keeper?.minutes ?? null,
+          goals_against: line?.keeper?.goalsAgainst ?? null,
+          saves: line?.keeper?.saves ?? null,
+          gk_wins: line?.keeper?.wins ?? null,
+          gk_losses: line?.keeper?.losses ?? null,
+          gk_ties: line?.keeper?.ties ?? null,
+          shutouts: line?.keeper?.shutouts ?? null,
           updated_at: now,
         };
       });

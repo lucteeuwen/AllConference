@@ -253,6 +253,35 @@ describe("roster and stats", () => {
     expect(parseStats(fixture("stats-wheaton.html")).find((line) => line.name === "Luke McGuire")?.goalkeeper).toBe(true);
   });
 
+  it("reads the profile from the roster's card views", () => {
+    const ncc = parseRoster(fixture("roster-north-central.html"));
+    expect(ncc.find((player) => player.name === "Will Mayer")).toMatchObject({
+      photoPath: "/images/2026/8/31/Will_Mayer__2.jpg",
+      bioPath: "/sports/mens-soccer/roster/will-mayer/19162",
+      positionLong: "Midfielder/Forward",
+      highSchool: "Fremd",
+      major: "Sports Management",
+      captain: false,
+    });
+    const wheaton = parseRoster(fixture("roster-wheaton.html"));
+    expect(wheaton.find((player) => player.name === "David Huber")).toMatchObject({
+      photoPath: "/images/2026/8/26/Huber_David.jpg",
+      positionLong: "Defender",
+      highSchool: "Sarasota High School",
+    });
+  });
+
+  it("reads the full season stat line, and the goalkeeping one", () => {
+    const sargent = parseStats(fixture("stats-north-central.html")).find((line) => line.name === "Joseph Sargent");
+    expect(sargent).toMatchObject({
+      minutes: 480, shots: 24, shotsOnGoal: 13, gameWinners: 3, pkGoals: 1, pkAttempts: 1, yellow: 0, red: 0, keeper: null,
+    });
+    const mcguire = parseStats(fixture("stats-wheaton.html")).find((line) => line.name === "Luke McGuire");
+    expect(mcguire?.keeper).toEqual({
+      minutes: 540, goalsAgainst: 14, saves: 19, wins: 1, losses: 4, ties: 1, shutouts: 0,
+    });
+  });
+
   it("maps position labels", () => {
     expect(parsePosition("M/F")).toBe("M");
     expect(parsePosition("GK")).toBe("GK");
