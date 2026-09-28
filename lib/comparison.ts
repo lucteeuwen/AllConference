@@ -1,3 +1,4 @@
+import { playerHref } from "@/lib/players";
 import { computeStandings, goalDifference } from "@/lib/standings";
 import type { Match, Player, Result, StandingsRow, Team } from "@/lib/types";
 
@@ -16,6 +17,9 @@ export type StatRow = {
   awayValue?: number;
   /** Whether the bigger number is the better one. */
   better?: "higher" | "lower";
+  /** Where each side's text links to, when it names a player. */
+  homeHref?: string;
+  awayHref?: string;
 };
 
 export type StatGroup = { title: string; note?: string; rows: StatRow[] };
@@ -238,19 +242,24 @@ export function compareTeams(input: ComparisonInput): Comparison {
 
   const rosterSize = (slug: string) => players.filter((player) => player.teamSlug === slug).length;
   if (rosterSize(home.slug) > 0 || rosterSize(away.slug) > 0) {
-    const scorer = (slug: string) => {
-      const p = topBy(players, slug, (player) => player.stats.goals);
-      return p ? `${p.name} · ${p.stats.goals}\u00a0G` : DASH;
-    };
-    const assister = (slug: string) => {
-      const p = topBy(players, slug, (player) => player.stats.assists);
-      return p ? `${p.name} · ${p.stats.assists}\u00a0A` : DASH;
+    /** Each side's leader in `stat`, linked to their player page. */
+    const leader = (label: string, stat: "goals" | "assists", unit: string): StatRow => {
+      const h = topBy(players, home.slug, (player) => player.stats[stat]);
+      const a = topBy(players, away.slug, (player) => player.stats[stat]);
+      const text = (p: Player) => `${p.name} · ${p.stats[stat]}\u00a0${unit}`;
+      return {
+        label,
+        home: h ? text(h) : DASH,
+        away: a ? text(a) : DASH,
+        homeHref: h ? playerHref(h) : undefined,
+        awayHref: a ? playerHref(a) : undefined,
+      };
     };
     groups.push({
       title: "Squad",
       rows: [
-        { label: "Top scorer", home: scorer(home.slug), away: scorer(away.slug) },
-        { label: "Most assists", home: assister(home.slug), away: assister(away.slug) },
+        leader("Top scorer", "goals", "G"),
+        leader("Most assists", "assists", "A"),
         {
           label: "Players on the roster",
           home: rosterSize(home.slug) > 0 ? String(rosterSize(home.slug)) : DASH,

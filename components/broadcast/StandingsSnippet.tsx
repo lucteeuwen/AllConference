@@ -3,6 +3,7 @@ import Link from "next/link";
 import { TeamBadge } from "@/components/TeamBadge";
 import { ExpandableRows } from "@/components/ExpandableRows";
 import { FormDots } from "@/components/FormDots";
+import { playerHref } from "@/lib/players";
 import { played, type ScorerStat } from "@/lib/selectors";
 import { recordFor } from "@/lib/standings";
 import type { HomeData } from "@/lib/home";
@@ -87,8 +88,9 @@ function ScorerRow({
   bordered: boolean;
 }) {
   return (
-    <div
-      className={`bc-row flex items-center gap-3 border-b border-line px-4 ${bordered ? "" : "last:border-0"}`}
+    <Link
+      href={playerHref(line.player)}
+      className={`bc-row flex items-center gap-3 border-b border-line px-4 transition hover:bg-ground ${bordered ? "" : "last:border-0"}`}
     >
       <span className="w-4 text-[0.75rem] font-black text-ink-faint tabular-nums">{rank}</span>
       <TeamBadge team={line.team} size="xs" />
@@ -97,7 +99,7 @@ function ScorerRow({
       </span>
       <StatColumn value={line.player.stats.goals} label="G" active={stat === "goals"} />
       <StatColumn value={line.player.stats.assists} label="A" active={stat === "assists"} />
-    </div>
+    </Link>
   );
 }
 

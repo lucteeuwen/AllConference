@@ -15,9 +15,11 @@ import type {
   MatchStage,
   MatchStatus,
   Player,
+  PlayerProfile,
   Position,
   Team,
 } from "@/lib/types";
+import type { EventRecord, LineupRecord } from "@/lib/players";
 
 /**
  * The one place that talks to Supabase. Everything a page shows is loaded
@@ -317,3 +319,101 @@ const cardCounts = cache(async (key: string): Promise<CardCounts> => {
 export function getCardCounts(slugs: string[]): Promise<CardCounts> {
   return cardCounts([...slugs].sort().join(","));
 }
+
+/** The profile columns the player page reads; absent until the migration runs. */
+type ProfileRow = {
+  photo_url?: string | null;
+  bio_url?: string | null;
+  position_long?: string | null;
+  weight?: string | null;
+  high_school?: string | null;
+  previous_school?: string | null;
+  major?: string | null;
+  captain?: boolean | null;
+  minutes?: number | null;
+  shots?: number | null;
+  shots_on_goal?: number | null;
+  game_winners?: number | null;
+  pk_goals?: number | null;
+  pk_attempts?: number | null;
+  yellow_cards?: number | null;
+  red_cards?: number | null;
+  gk_minutes?: number | null;
+  goals_against?: number | null;
+  saves?: number | null;
+  gk_wins?: number | null;
+  gk_losses?: number | null;
+  gk_ties?: number | null;
+  shutouts?: number | null;
+};
+
+function toProfile(row: ProfileRow): PlayerProfile {
+  return {
+    photoUrl: row.photo_url ?? null,
+    bioUrl: row.bio_url ?? null,
+    positionLong: row.position_long ?? null,
+    weight: row.weight ?? null,
+    highSchool: row.high_school ?? null,
+    previousSchool: row.previous_school ?? null,
+    major: row.major ?? null,
+    captain: row.captain ?? false,
+    minutes: row.minutes ?? null,
+    shots: row.shots ?? null,
+    shotsOnGoal: row.shots_on_goal ?? null,
+    gameWinners: row.game_winners ?? null,
+    pkGoals: row.pk_goals ?? null,
+    pkAttempts: row.pk_attempts ?? null,
+    yellowCards: row.yellow_cards ?? null,
+    redCards: row.red_cards ?? null,
+    keeper:
+      row.gk_minutes != null
+        ? {
+            minutes: row.gk_minutes,
+            goalsAgainst: row.goals_against ?? 0,
+            saves: row.saves ?? 0,
+            wins: row.gk_wins ?? 0,
+            losses: row.gk_losses ?? 0,
+            ties: row.gk_ties ?? 0,
+            shutouts: row.shutouts ?? 0,
+          }
+        : null,
+  };
+}
+
+/**
+ * A player's profile and every box-score row for their team this season, for
+ * the player page. `select("*")` rather than a column list, so the page still
+ * renders (with less on it) before the profile migration has run.
+ */
+export const getPlayerDetails = cache(
+  async (
+    playerId: string,
+    teamSlug: string,
+  ): Promise<{ profile: PlayerProfile | null; lineups: LineupRecord[]; events: EventRecord[] }> => {
+    const db = createServerClient();
+    const [profile, lineups, events] = await Promise.all([
+      db.from("players").select("*").eq("id", playerId).maybeSingle(),
+      readAll<LineupRecord>((from, to) =>
+        db
+          .from("match_lineups")
+          .select("match_id, team_slug, starter, position, player_name, player_id")
+          .eq("team_slug", teamSlug)
+          .like("match_id", `${SEASON}-%`)
+          .order("id")
+          .range(from, to),
+      ),
+      readAll<EventRecord>((from, to) =>
+        db
+          .from("match_events")
+          .select("match_id, minute, type, team_slug, player_name, player_id, assist_name, assist_player_id")
+          .eq("team_slug", teamSlug)
+          .like("match_id", `${SEASON}-%`)
+          .order("id")
+          .range(from, to),
+      ),
+    ]);
+    if (profile.error) throw new Error(profile.error.message);
+
+    return { profile: profile.data ? toProfile(profile.data as ProfileRow) : null, lineups, events };
+  },
+);

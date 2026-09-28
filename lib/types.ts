@@ -128,6 +128,55 @@ export type Player = {
   };
 };
 
+/**
+ * What the player page adds to `Player`: the rest of the school's roster card
+ * and season stats. Every field is optional, since rosters differ per school.
+ */
+export type PlayerProfile = {
+  photoUrl: string | null;
+  bioUrl: string | null;
+  /** "Midfielder/Forward". */
+  positionLong: string | null;
+  weight: string | null;
+  highSchool: string | null;
+  previousSchool: string | null;
+  major: string | null;
+  captain: boolean;
+  minutes: number | null;
+  shots: number | null;
+  shotsOnGoal: number | null;
+  gameWinners: number | null;
+  pkGoals: number | null;
+  pkAttempts: number | null;
+  yellowCards: number | null;
+  redCards: number | null;
+  /** Only for a player who has kept goal. */
+  keeper: {
+    minutes: number;
+    goalsAgainst: number;
+    saves: number;
+    wins: number;
+    losses: number;
+    ties: number;
+    shutouts: number;
+  } | null;
+};
+
+/** One game in a player's log, read from the box score we hold. */
+export type PlayerGame = {
+  match: Match;
+  /** Null when the box score has no lineup, only the player's events. */
+  started: boolean | null;
+  position: string | null;
+  goals: number;
+  penalties: number;
+  assists: number;
+  yellow: number;
+  red: number;
+  /** Minutes of the player's goals, in order. */
+  goalMinutes: number[];
+};
+
 export type Result = "W" | "L" | "D";
 
 export type RecordLine = {
