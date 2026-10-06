@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { BackButton } from "@/components/BackButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DetailRow } from "@/components/DetailRow";
-import { EventIcon } from "@/components/EventIcon";
+import { EventIcon, type EventIconType } from "@/components/EventIcon";
 import { KickoffRows, KickoffValue } from "@/components/matches/KickoffRows";
 import { WashHero } from "@/components/broadcast/WashHero";
 import { OverlapCard } from "@/components/broadcast/OverlapCard";
@@ -21,7 +21,7 @@ import { Tabs } from "@/components/Tabs";
 import { compareTeams } from "@/lib/comparison";
 import { getCardCounts, getSeasonData, withDetails } from "@/lib/season-data";
 import { timingOf } from "@/lib/hero";
-import { playerLookup, splitAssists, type PlayerLookup } from "@/lib/players";
+import { nameKey, playerLookup, splitAssists, type PlayerLookup } from "@/lib/players";
 import { effectiveStatus } from "@/lib/live";
 import { renderedAt } from "@/lib/rendered-at";
 import { verifyVideo } from "@/lib/video-verify";
@@ -72,7 +72,51 @@ function EventLabel({ event, lookup }: { event: MatchEvent; lookup: PlayerLookup
   );
 }
 
-function LineupColumn({ side, lineup, lookup }: { side: MatchSide; lineup: Lineup; lookup: PlayerLookup }) {
+type PlayerMark = { minute: number; kind: EventIconType };
+
+/** The goals, assists and cards in `events` that belong to one lineup player. */
+function playerMarks(events: MatchEvent[], side: MatchSide, name: string, lookup: PlayerLookup): PlayerMark[] {
+  const me = lookup(side.teamSlug, name);
+  const key = nameKey(name);
+  const isMe = (other: string) => {
+    const player = lookup(side.teamSlug, other);
+    return me && player ? me.id === player.id : nameKey(other) === key;
+  };
+  const marks: PlayerMark[] = [];
+  for (const event of events) {
+    if (event.teamSlug !== side.teamSlug) continue;
+    if (isMe(event.playerName)) marks.push({ minute: event.minute, kind: event.type });
+    if (event.assistName && splitAssists(event.assistName).some(isMe)) {
+      marks.push({ minute: event.minute, kind: "assist" });
+    }
+  }
+  return marks.sort((a, b) => a.minute - b.minute);
+}
+
+function PlayerMarks({ marks }: { marks: PlayerMark[] }) {
+  return (
+    <span className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-0.5">
+      {marks.map((mark, index) => (
+        <span key={index} className="flex items-center gap-1">
+          <span className="text-[0.68rem] font-semibold text-ink-muted tabular-nums">{mark.minute}&apos;</span>
+          <EventIcon type={mark.kind} />
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function LineupColumn({
+  side,
+  lineup,
+  events,
+  lookup,
+}: {
+  side: MatchSide;
+  lineup: Lineup;
+  events: MatchEvent[];
+  lookup: PlayerLookup;
+}) {
   return (
     <div>
       <div className="mb-3 flex items-center gap-2.5">
@@ -90,7 +134,8 @@ function LineupColumn({ side, lineup, lookup }: { side: MatchSide; lineup: Lineu
             <PlayerLink player={lookup(side.teamSlug, player.name)} className="truncate font-medium text-ink">
               {player.name}
             </PlayerLink>
-            <span className="ml-auto w-5 shrink-0 text-left text-[0.68rem] font-semibold text-ink-faint">
+            <PlayerMarks marks={playerMarks(events, side, player.name, lookup)} />
+            <span className="w-5 shrink-0 text-left text-[0.68rem] font-semibold text-ink-faint">
               {player.position ?? ""}
             </span>
           </li>
@@ -108,6 +153,7 @@ function LineupColumn({ side, lineup, lookup }: { side: MatchSide; lineup: Lineu
                 <PlayerLink player={lookup(side.teamSlug, player.name)} className="truncate">
                   {player.name}
                 </PlayerLink>
+                <PlayerMarks marks={playerMarks(events, side, player.name, lookup)} />
               </li>
             ))}
           </ul>
@@ -301,8 +347,8 @@ export default async function MatchPage({ params, searchParams }: Props) {
         {active === "lineups" && match.lineups ? (
           <div className="bc-card bc-pad bc-shadow">
             <div className="grid gap-8 md:grid-cols-2">
-              <LineupColumn side={match.home} lineup={match.lineups.home} lookup={lookup} />
-              <LineupColumn side={match.away} lineup={match.lineups.away} lookup={lookup} />
+              <LineupColumn side={match.home} lineup={match.lineups.home} events={match.events} lookup={lookup} />
+              <LineupColumn side={match.away} lineup={match.lineups.away} events={match.events} lookup={lookup} />
             </div>
           </div>
         ) : null}
