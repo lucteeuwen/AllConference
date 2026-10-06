@@ -115,60 +115,55 @@ export function classifyVideo(raw: string | null | undefined): MatchVideo | unde
   return { url: href, provider, label: `Find the game on ${platform}`, exact: false, platform };
 }
 
-/**
- * The platform's own page, for when a link can't be confirmed as this game's:
- * the same address without the broadcast id, and never a specific broadcast.
- */
-export function platformFallback(video: MatchVideo, channelUrl?: string): MatchVideo {
-  let url = video.url;
-  try {
-    const parsed = new URL(video.url);
-    if (video.provider === "youtube") url = channelUrl ?? "https://www.youtube.com/";
-    else if (video.provider === "flo") url = "https://www.flocollege.com/";
-    else if (parsed.hostname.endsWith("vcloud.hudl.com")) url = "https://www.hudl.com/";
-    else url = `${parsed.origin}${parsed.pathname}`;
-  } catch {
-    // Keep the address as it was.
-  }
-  return {
-    url,
-    provider: video.provider,
-    label: `Find the game on ${video.platform}`,
-    exact: false,
-    platform: video.platform,
-  };
-}
-
 /* ------------------------------------------------------------------------ */
 /* Checking a broadcast's title against the game it is linked from          */
 /* ------------------------------------------------------------------------ */
 
+/**
+ * Lower case, punctuation gone, and without the words schools add or leave out
+ * at will, so "Concordia University Chicago" reads as "Concordia Chicago" and
+ * "University of Dubuque" as "Dubuque".
+ */
 function normalize(text: string): string {
   return ` ${text
     .toLowerCase()
     .replace(/&#0?39;|&apos;/g, "'")
     .replace(/&amp;/g, " ")
-    .replace(/'/g, "")
+    .replace(/['’]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\buw\b/g, "university of wisconsin")
+    .replace(/\buw\b/g, "wisconsin")
+    .replace(/\b(university|college|colleges|of|the)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim()} `;
 }
 
+/** Short forms titles use that no name of the team spells out. */
+const EXTRA_ALIASES: Record<string, string[]> = {
+  "milwaukee-school-of-engineering": ["MSOE"],
+  "concordia-chicago": ["CUC", "Concordia-Chicago"],
+  "concordia-wis": ["Concordia Wisconsin", "CUW"],
+  "california-institute-of-technology": ["Caltech"],
+  "claremont-mudd-scripps-colleges": ["CMS"],
+  "university-of-chicago": ["UChicago"],
+  washu: ["Wash U", "WUSTL"],
+  "washington-in-st-louis": ["WashU", "Wash U", "WUSTL"],
+  "illinois-institute-of-technology": ["Illinois Tech", "IIT"],
+  "north-central": ["NCC"],
+  "illinois-wesleyan": ["IWU"],
+};
+
 /** Spellings a title may use for a team: "Dubuque" for "University of Dubuque". */
 function aliasesOf(team: NamedTeam): string[] {
   const out = new Set<string>();
-  for (const name of [team.name, team.fullName]) {
-    const full = normalize(name).trim();
-    if (!full) continue;
-    out.add(full);
-    out.add(full.replace(/^university of /, "").replace(/ (university|college|colleges)$/, ""));
+  for (const name of [team.name, team.fullName, ...(team.aliases ?? []), ...(EXTRA_ALIASES[team.slug] ?? [])]) {
+    out.add(normalize(name).trim());
   }
   out.delete("");
   return [...out];
 }
 
-type NamedTeam = Pick<Team, "slug" | "name" | "fullName">;
+/** A team as titles are checked against it; `aliases` are other spellings of its name. */
+export type NamedTeam = Pick<Team, "slug" | "name" | "fullName"> & { aliases?: string[] };
 
 /** Teams the database holds under two slugs. */
 const SAME_TEAM: string[][] = [["washu", "washington-in-st-louis"]];
@@ -182,12 +177,16 @@ function ownSlugs(playing: string[]): Set<string> {
   return own;
 }
 
+/** A bracket stand-in ("Semifinals", "CCIW 1st Round"), not a school. */
+export function isStandIn(slug: string): boolean {
+  return /^cciw-|^(quarterfinals|semifinals|finals)$/.test(slug);
+}
+
 /** The teams a title names, one set of slugs per name found (a name may fit two schools). */
 function titleMentions(title: string, teams: NamedTeam[]): Set<string>[] {
   const byAlias = new Map<string, Set<string>>();
   for (const team of teams) {
-    // Bracket stand-ins ("Semifinals", "CCIW 1st Round") are not schools.
-    if (/^cciw-|^(quarterfinals|semifinals|finals)$/.test(team.slug)) continue;
+    if (isStandIn(team.slug)) continue;
     for (const alias of aliasesOf(team)) {
       if (!byAlias.has(alias)) byAlias.set(alias, new Set());
       byAlias.get(alias)?.add(team.slug);

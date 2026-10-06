@@ -30,12 +30,23 @@ export const LIVE = {
 
 /**
  * The CCIW Network (cciwnetwork.com) is a portal over Hudl vCloud. Its config
- * lists these nine school sites; section 103 is men's soccer.
+ * lists these nine school sites; section 103 is men's soccer on every vCloud
+ * site, so the other conferences' networks are read the same way.
  */
 export const BROADCASTS = {
   api: "https://vcloud.hudl.com/api/viewer/broadcast",
   portal: "https://cciwnetwork.com",
   section: 103,
+  /** Hudl vCloud portals, where `<portal>/<site>/` is one school's channel. */
+  portals: [
+    "cciwnetwork.com",
+    "wiacnetwork.com",
+    "miaasportsnetwork.com",
+    "miacsportsnetwork.com",
+    "rollriversnetwork.com",
+    "centraldutchnetwork.com",
+    "watchmidwestsports.com",
+  ],
   /** Each school's site on the network, and the team it is. */
   sites: {
     ACVikings: "augustana",
@@ -48,4 +59,13 @@ export const BROADCASTS = {
     northpark: "north-park",
     wheatoncollege: "wheaton",
   } as Record<string, string>,
+};
+
+/**
+ * YouTube Data API, for schools that link only their channel. Optional: without
+ * a key those games keep whatever link they had.
+ */
+export const YOUTUBE = {
+  api: "https://www.googleapis.com/youtube/v3",
+  key: process.env.YOUTUBE_API_KEY || null,
 };

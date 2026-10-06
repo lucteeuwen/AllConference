@@ -238,7 +238,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
             {video ? (
               <div className="bc-card bc-pad bc-shadow lg:col-span-2">
                 <h2 className="bc-label mb-3 text-[0.7rem] text-ink-faint">
-                  {!video.exact ? "Where to watch" : effective === "full-time" ? "Watch the replay" : "Watch"}
+                  {effective === "full-time" ? "Watch the replay" : "Watch"}
                 </h2>
                 <MatchVideo video={video} live={live} />
               </div>
