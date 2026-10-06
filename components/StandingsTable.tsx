@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { TeamBadge } from "@/components/TeamBadge";
 import { FormDots } from "@/components/FormDots";
 import { SlidingSegments } from "@/components/SlidingSegments";
-import { recordFor, sortEntries, type SortColumn, type SortKey } from "@/lib/standings";
+import { pointsFor, recordFor, sortEntries, type SortColumn, type SortKey } from "@/lib/standings";
 import type { StandingsRow, StandingsSplit, Team } from "@/lib/types";
 
 export type StandingsEntry = {
@@ -135,7 +135,7 @@ export function StandingsTable({
                     </Link>
                   </td>
                   <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{gp}</td>
-                  <td className="bc-row px-2 text-center font-bold tabular-nums text-ink">{record.pts}</td>
+                  <td className="bc-row px-2 text-center font-bold tabular-nums text-ink">{pointsFor(row, split, conferenceStarted)}</td>
                   <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{record.w}</td>
                   <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{record.l}</td>
                   <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{record.d}</td>
