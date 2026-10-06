@@ -55,7 +55,7 @@ export type MatchRecord = {
   stage: MatchStage;
   bracket_slot: string | null;
   video_url: string | null;
-  /** The exact CCIW Network broadcast, when one was found; undefined = not looked up this run. */
+  /** The game's own stream or replay on any platform (see ./watch); null when none was found. */
   broadcast_url?: string | null;
   boxscore_url: string | null;
   recap_url: string | null;

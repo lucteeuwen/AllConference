@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { broadcastUrl, pickBroadcast, type Broadcast } from "../broadcasts";
+import { broadcastUrl, hudlSiteOf, pickBroadcast, type Broadcast } from "../broadcasts";
 
 // A real slice of the CCIW Network's men's soccer broadcast list.
 const broadcasts = JSON.parse(
@@ -20,6 +20,9 @@ const teams = [
   team("pacific-lutheran", "Pacific Lutheran", "Pacific Lutheran University"),
   team("greenville", "Greenville", "Greenville University"),
   team("augustana", "Augustana", "Augustana College"),
+  team("concordia-chicago", "Concordia Chicago"),
+  team("milwaukee-school-of-engineering", "Milwaukee School of Engineering"),
+  team("university-of-wisconsin-stevens-point", "University of Wisconsin-Stevens Point"),
 ];
 
 const game = (home: string, away: string, date: string, extra = {}) => ({
@@ -33,6 +36,22 @@ const game = (home: string, away: string, date: string, extra = {}) => ({
 describe("broadcastUrl", () => {
   it("links to the game on the network, under the school's lower-cased site", () => {
     expect(broadcastUrl({ id: "4123942", site: "ACVikings" })).toBe("https://cciwnetwork.com/acvikings/?B=4123942");
+  });
+});
+
+describe("hudlSiteOf", () => {
+  it("reads the school's site on any Hudl network", () => {
+    expect(hudlSiteOf("https://www.wiacnetwork.com/stevenspoint/")).toEqual({
+      portal: "https://wiacnetwork.com",
+      site: "stevenspoint",
+    });
+    expect(hudlSiteOf("https://rollriversnetwork.com/dubuque/?B=4179584")?.site).toBe("dubuque");
+  });
+
+  it("ignores other hosts and a portal's front page", () => {
+    expect(hudlSiteOf("https://boxcast.tv/channel/dmfutowrtlmndztdlxrk")).toBeNull();
+    expect(hudlSiteOf("https://cciwnetwork.com/?B=4112816")).toBeNull();
+    expect(hudlSiteOf(null)).toBeNull();
   });
 });
 
@@ -97,5 +116,50 @@ describe("pickBroadcast", () => {
       teams,
     );
     expect(pick.url).toBe("https://cciwnetwork.com/elmhurst/?B=4123942");
+  });
+
+  it("knows Concordia Chicago and MSOE by the names other schools give them", () => {
+    const augustana = pickBroadcast(game("augustana", "concordia-chicago", "2026-09-09T00:00:00Z"), broadcasts, teams);
+    expect(augustana.url).toBe("https://cciwnetwork.com/acvikings/?B=4399022");
+    const list: Broadcast[] = [
+      { id: "4171409", site: "northpark", title: "North Park University vs MSOE", date: "2026-09-07T23:45:00+00:00", date_modified: null },
+    ];
+    const pick = pickBroadcast(game("north-park", "milwaukee-school-of-engineering", "2026-09-08T00:00:00Z"), list, teams);
+    expect(pick.url).toBe("https://cciwnetwork.com/northpark/?B=4171409");
+  });
+
+  it("links a broadcast on another conference's network to that network, with its school implied", () => {
+    const list: Broadcast[] = [
+      {
+        id: "4391674",
+        site: "stevenspoint",
+        title: "Men's Soccer vs. Augustana",
+        date: "2026-09-12T17:00:00+00:00",
+        date_modified: null,
+        portal: "https://wiacnetwork.com",
+        team: "university-of-wisconsin-stevens-point",
+      },
+    ];
+    const pick = pickBroadcast(
+      game("university-of-wisconsin-stevens-point", "augustana", "2026-09-12T17:00:00Z"),
+      list,
+      teams,
+    );
+    expect(pick.url).toBe("https://wiacnetwork.com/stevenspoint/?B=4391674");
+  });
+
+  it("skips a broadcast the school has taken down", () => {
+    const list: Broadcast[] = [
+      { id: "1", site: "elmhurst", title: "Elmhurst vs Knox", date: "2026-09-05T21:00:00Z", date_modified: null, hidden: true },
+      { id: "2", site: "elmhurst", title: "Elmhurst vs Knox", date: "2026-09-05T21:00:00Z", date_modified: null, available: false },
+    ];
+    expect(pickBroadcast(game("elmhurst", "knox", "2026-09-05T21:00:00Z"), list, teams).url).toBeNull();
+  });
+
+  it("ignores reserve games and scrimmages", () => {
+    const list: Broadcast[] = [
+      { id: "4578631", site: "elmhurst", title: "Reserves v Knox", date: "2026-09-05T21:00:00Z", date_modified: null },
+    ];
+    expect(pickBroadcast(game("elmhurst", "knox", "2026-09-05T21:00:00Z"), list, teams).url).toBeNull();
   });
 });

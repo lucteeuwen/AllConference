@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "scrape": "tsx scraper/index.ts",
+    "videos:audit": "tsx scraper/audit-videos.ts",
     "test": "vitest run",
     "db:push": "supabase db push"
   },

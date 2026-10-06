@@ -1,7 +1,6 @@
 import "./env";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { LIVE, SEASON, SEASON_START } from "./config";
-import { fetchBroadcasts, pickBroadcast } from "./broadcasts";
 import { createDb, must, upsertInChunks } from "./db";
 import { fetchJson, fetchText, requestsMade, unreachableHosts } from "./http";
 import { cacheLogo } from "./logos";
@@ -15,6 +14,7 @@ import { parseScoreboard, scoreboardUrl, type RawGame, type SidearmGame } from "
 import { isSplitZoneState } from "./timezones";
 import { startFromEvent } from "@/lib/live";
 import { buildBracket, type SlotRow } from "./tournament";
+import { resolveWatchLinks, type WatchSource } from "./watch";
 
 /**
  * npm run scrape [-- --rosters] [--dry-run] [--no-live] [--json] [--auto | --live-only]
@@ -48,6 +48,8 @@ type ExistingMatch = {
   status: string;
   finished_at: string | null;
   events_scraped: boolean;
+  /** Not loaded in live-only runs, which never write it. */
+  broadcast_url?: string | null;
 };
 
 type Context = {
@@ -118,40 +120,40 @@ async function refreshFeeds(ctx: Context, schools: TeamRow[]): Promise<void> {
 }
 
 /**
- * Links each game to its own CCIW Network broadcast. When the network can't be
- * read, `broadcast_url` is left off every row so what is stored stays as it was.
+ * Links each game to its own stream or replay (see ./watch). A game whose
+ * platform could not be asked this run keeps the link it had.
  */
-async function attachBroadcasts(ctx: Context): Promise<void> {
-  let broadcasts;
-  try {
-    broadcasts = await fetchBroadcasts();
-  } catch (error) {
-    note(ctx, `WARN CCIW Network broadcasts unavailable, keeping stored links: ${error instanceof Error ? error.message : error}`);
-    return;
-  }
+async function attachWatchLinks(ctx: Context): Promise<void> {
+  const teams = ctx.teams.map((team) => ({
+    slug: team.slug,
+    name: team.name,
+    fullName: team.full_name,
+    aliases: team.is_conference ? team.aliases : [],
+  }));
+  const matches = ctx.matches.map((match) => ({
+    ...match,
+    broadcast_url: ctx.existing.get(match.id)?.broadcast_url ?? null,
+  }));
+  const results = await resolveWatchLinks(matches, { teams, log: (message) => note(ctx, message) });
 
-  // An empty list means the API changed, not that every game lost its broadcast.
-  if (broadcasts.length === 0) {
-    note(ctx, "WARN CCIW Network returned no broadcasts, keeping stored links");
-    return;
-  }
-
-  const teams = ctx.teams.map((team) => ({ slug: team.slug, name: team.name, fullName: team.full_name }));
-  let resolved = 0;
-  let expected = 0;
+  const counts = new Map<WatchSource | "none" | "kept", number>();
+  const count = (key: WatchSource | "none" | "kept") => counts.set(key, (counts.get(key) ?? 0) + 1);
   for (const match of ctx.matches) {
-    const { url, candidates } = pickBroadcast(match, broadcasts, teams);
-    match.broadcast_url = url;
-    if (url) resolved++;
-    if (candidates > 1) note(ctx, `${match.id}: ${candidates} broadcasts fit, using ${url}`);
+    const result = results.get(match.id);
+    if (!result?.settled) {
+      match.broadcast_url = ctx.existing.get(match.id)?.broadcast_url ?? null;
+      count("kept");
+      continue;
+    }
+    match.broadcast_url = result.url;
+    count(result.source ?? "none");
     // A game a CCIW school hosts should be on its own network.
     const host = ctx.conference.some((team) => team.slug === match.home_slug);
-    if (host && match.status !== "final" && match.status !== "canceled") {
-      expected++;
-      if (!url) note(ctx, `${match.id}: no CCIW Network broadcast (yet)`);
+    if (!result.url && host && match.status !== "final" && match.status !== "canceled") {
+      note(ctx, `${match.id}: no stream found (yet): ${result.reason}`);
     }
   }
-  note(ctx, `CCIW Network: ${broadcasts.length} broadcasts, linked ${resolved} of ${ctx.matches.length} games (${expected} upcoming home games expected)`);
+  note(ctx, `watch links: ${[...counts].map(([key, value]) => `${key} ${value}`).join(", ")} of ${ctx.matches.length} games`);
 }
 
 async function syncMatches(ctx: Context): Promise<void> {
@@ -223,7 +225,7 @@ async function syncMatches(ctx: Context): Promise<void> {
 
   const now = new Date().toISOString();
   ctx.matches = bracket.matches;
-  await attachBroadcasts(ctx);
+  await attachWatchLinks(ctx);
 
   if (options.dryRun) return;
 
@@ -265,6 +267,7 @@ async function syncMatches(ctx: Context): Promise<void> {
       status: row.status,
       finished_at: row.finished_at,
       events_scraped: before?.events_scraped ?? false,
+      broadcast_url: row.broadcast_url,
     });
   }
 
@@ -612,6 +615,7 @@ async function pollLive(ctx: Context, active: LiveRow[]): Promise<boolean> {
       status: patch?.status ?? row.status,
       finished_at: patch?.finished_at ?? row.finished_at,
       events_scraped: row.events_scraped,
+      broadcast_url: ctx.existing.get(row.id)?.broadcast_url,
     });
   }
 
@@ -726,12 +730,13 @@ async function main() {
       "start run",
     );
     runId = run.id;
-    const existing = await must<ExistingMatch[]>(
-      db.from("matches").select("id, status, finished_at, events_scraped").eq("season", SEASON),
-      "load matches",
-    );
-    existing.forEach((row) => ctx.existing.set(row.id, row));
   }
+  // A dry run reads them too, so it shows which stored links a run would keep.
+  const existing = await must<ExistingMatch[]>(
+    db.from("matches").select("id, status, finished_at, events_scraped, broadcast_url").eq("season", SEASON),
+    "load matches",
+  );
+  existing.forEach((row) => ctx.existing.set(row.id, row));
 
   let ok = false;
   try {
@@ -778,7 +783,7 @@ function report(ctx: Context) {
   console.log(`conference: ${ctx.matches.filter((match) => match.is_conference).length}`);
   console.log(`final: ${ctx.matches.filter((match) => match.status === "final").length}`);
   console.log(`with video: ${ctx.matches.filter((match) => match.video_url).length}`);
-  console.log(`with CCIW Network broadcast: ${ctx.matches.filter((match) => match.broadcast_url).length}`);
+  console.log(`with a stream link: ${ctx.matches.filter((match) => match.broadcast_url).length}`);
   const tbc = ctx.matches.filter((match) => !match.home_slug || !match.away_slug);
   console.log(`TBC: ${tbc.map((match) => `${match.id} (${match.home_placeholder ?? match.home_slug} v ${match.away_placeholder ?? match.away_slug})`).join(", ")}`);
   if (options.json) console.log(JSON.stringify(ctx.matches, null, 2));

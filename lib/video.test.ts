@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyVideo, platformFallback, titleVerdict } from "@/lib/video";
+import { classifyVideo, titleNamesBoth, titleVerdict } from "@/lib/video";
 import type { Team } from "@/lib/types";
 
 const team = (slug: string, name: string, fullName = name) => ({ slug, name, fullName }) as Team;
@@ -21,6 +21,10 @@ const teams = [
   team("washu", "WashU"),
   team("washington-in-st-louis", "Washington in St. Louis", "Washington University in St. Louis"),
   team("semifinals", "Semifinals"),
+  team("north-park", "North Park", "North Park University"),
+  team("milwaukee-school-of-engineering", "Milwaukee School of Engineering"),
+  team("concordia-chicago", "Concordia Chicago"),
+  team("university-of-chicago", "University of Chicago"),
 ];
 
 describe("classifyVideo", () => {
@@ -60,22 +64,6 @@ describe("classifyVideo", () => {
   });
 });
 
-describe("platformFallback", () => {
-  it("drops the broadcast id but keeps the school's page", () => {
-    const video = classifyVideo("https://www.cciwnetwork.com/northcentralcardinals/?B=4128200");
-    expect(platformFallback(video as NonNullable<typeof video>)).toMatchObject({
-      url: "https://www.cciwnetwork.com/northcentralcardinals/",
-      exact: false,
-      label: "Find the game on CCIW Network",
-    });
-  });
-
-  it("sends a wrong FloCollege game to FloCollege's front page", () => {
-    const video = classifyVideo("https://www.flocollege.com/live/1");
-    expect(platformFallback(video as NonNullable<typeof video>).url).toBe("https://www.flocollege.com/");
-  });
-});
-
 describe("titleVerdict", () => {
   const verdict = (title: string, ...playing: string[]) => titleVerdict(title, playing, teams);
 
@@ -108,5 +96,32 @@ describe("titleVerdict", () => {
     expect(verdict("UW-Stevens Point vs. Augustana", "uw-stevens-point", "augustana")).toBe("match");
     expect(verdict("UW-Stevens Point vs. Augustana", "university-of-wisconsin-stevens-point", "augustana")).toBe("match");
     expect(verdict("WashU vs Elmhurst", "washington-in-st-louis", "elmhurst")).toBe("match");
+  });
+});
+
+describe("titleNamesBoth", () => {
+  const both = (title: string, ...playing: string[]) => titleNamesBoth(title, playing, teams);
+
+  it("knows a school by the short form its opponents' titles use", () => {
+    expect(both("North Park University vs MSOE", "north-park", "milwaukee-school-of-engineering")).toBe(true);
+    expect(both("Men's Soccer vs CUC", "augustana", "concordia-chicago")).toBe(false);
+    expect(titleNamesBoth("Men\u2019s Soccer vs CUC", ["augustana", "concordia-chicago"], teams, "augustana")).toBe(true);
+  });
+
+  it("reads past the words a school's name may or may not carry", () => {
+    expect(
+      both("Augustana College vs Concordia University Chicago Men's Varsity Soccer", "augustana", "concordia-chicago"),
+    ).toBe(true);
+    expect(both("Carroll University vs University of Chicago", "carroll", "university-of-chicago")).toBe(true);
+    expect(both("Elmhurst University vs Washington University in St Louis", "elmhurst", "washington-in-st-louis")).toBe(true);
+  });
+
+  it("does not read Concordia Chicago as the University of Chicago", () => {
+    expect(both("Augustana vs Concordia University Chicago", "augustana", "university-of-chicago")).toBe(false);
+  });
+
+  it("uses a team's stored aliases", () => {
+    const withAlias = [...teams, { slug: "ncc", name: "Nowhere", fullName: "Nowhere", aliases: ["Cardinals Club"] }];
+    expect(titleNamesBoth("Cardinals Club vs Knox", ["ncc", "knox"], withAlias)).toBe(true);
   });
 });
