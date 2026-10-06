@@ -5,7 +5,7 @@ import { ExpandableRows } from "@/components/ExpandableRows";
 import { FormDots } from "@/components/FormDots";
 import { playerHref } from "@/lib/players";
 import { played, type ScorerStat } from "@/lib/selectors";
-import { recordFor } from "@/lib/standings";
+import { pointsFor, recordFor } from "@/lib/standings";
 import type { HomeData } from "@/lib/home";
 
 /**
@@ -44,7 +44,7 @@ export function StandingsSnippet({
               {played(record)} GP
             </span>
             <span className="w-8 text-right text-[0.9rem] font-black text-ink tabular-nums">
-              {record.pts}
+              {pointsFor(line.row, "all", conferenceStarted)}
             </span>
           </Link>
         );

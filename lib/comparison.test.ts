@@ -66,7 +66,7 @@ describe("compareTeams", () => {
   it("counts record, points, goals and clean sheets from every finished game", () => {
     const c = compareTeams(input(matches));
     expect(row(c, "Season so far", "Record (W-D-L)")).toMatchObject({ home: "2-0-0", away: "0-1-1" });
-    expect(row(c, "Season so far", "Points")).toMatchObject({ home: "6", away: "1", homeValue: 6, awayValue: 1 });
+    expect(c.groups.find((g) => g.title === "Season so far")?.rows.some((r) => r.label.includes("Points"))).toBe(false);
     expect(row(c, "Scoring", "Goals scored")).toMatchObject({ home: "5", away: "1" });
     expect(row(c, "Scoring", "Goals conceded")).toMatchObject({ home: "1", away: "3", better: "lower" });
     expect(row(c, "Scoring", "Goal difference")).toMatchObject({ home: "+4", away: "-2" });

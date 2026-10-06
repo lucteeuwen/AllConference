@@ -73,6 +73,18 @@ export function recordFor(
   return conferenceStarted ? row.conference : row.overall;
 }
 
+/**
+ * The points a split shows: CCIW points only. Before conference play starts
+ * there are none, so it is 0 rather than the points from non-conference games.
+ */
+export function pointsFor(
+  row: StandingsRow,
+  split: StandingsSplit,
+  conferenceStarted: boolean,
+): number {
+  return conferenceStarted ? recordFor(row, split, conferenceStarted).pts : 0;
+}
+
 export function columnValue(record: RecordLine, column: SortColumn): number {
   switch (column) {
     case "pts":
@@ -117,7 +129,10 @@ export function sortEntries<T extends { row: StandingsRow }>(
   }
 
   const direction = lowerIsBetter.has(sort) ? -1 : 1;
-  const valueOf = (entry: T) => columnValue(recordFor(entry.row, split, conferenceStarted), sort);
+  const valueOf = (entry: T) =>
+    sort === "pts"
+      ? pointsFor(entry.row, split, conferenceStarted)
+      : columnValue(recordFor(entry.row, split, conferenceStarted), sort);
   return [...entries].sort((a, b) => direction * (valueOf(b) - valueOf(a)) || byRank(a, b));
 }
 

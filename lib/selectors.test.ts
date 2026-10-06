@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getScorersBy, getTopScorers, tableView, type StandingsLine } from "@/lib/selectors";
-import { recordFor } from "@/lib/standings";
+import { pointsFor, recordFor } from "@/lib/standings";
 import type { SeasonData } from "@/lib/season-data";
 import type { Player, RecordLine, Result, StandingsRow, Team } from "@/lib/types";
 
@@ -51,6 +51,14 @@ describe("tableView", () => {
 
     const after = tableView([line("x", 1, { conference: record(1), overall: record(5) })]);
     expect(recordFor(after.lines[0].row, "all", after.started).pts).toBe(3);
+  });
+
+  it("counts only CCIW points: none before the start, conference points after", () => {
+    const before = tableView(beforeConference);
+    expect(before.lines.map((l) => pointsFor(l.row, "all", before.started))).toEqual([0, 0, 0]);
+
+    const after = tableView([line("x", 1, { conference: record(1), overall: record(5) })]);
+    expect(pointsFor(after.lines[0].row, "all", after.started)).toBe(3);
   });
 });
 

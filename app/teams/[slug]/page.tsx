@@ -14,7 +14,7 @@ import { PlayerLink } from "@/components/PlayerLink";
 import { playerHref } from "@/lib/players";
 import { buildRailTiles } from "@/lib/rail";
 import { SEASON_LABEL } from "@/lib/season";
-import { recordFor } from "@/lib/standings";
+import { pointsFor } from "@/lib/standings";
 import { renderedAt } from "@/lib/rendered-at";
 import { getSeasonData } from "@/lib/season-data";
 import {
@@ -74,7 +74,6 @@ export default async function TeamPage({ params, searchParams }: Props) {
   // The same order as the standings table, so the badge always matches its `#`.
   const line = displayStandings(standings).find((entry) => entry.team.slug === slug);
   const row = line?.row;
-  const shownRecord = row ? recordFor(row, "all", started) : undefined;
 
   const roster = getRoster(data, slug);
   const fixtures = matchesForTeam(data, slug);
@@ -133,8 +132,8 @@ export default async function TeamPage({ params, searchParams }: Props) {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
               <Stat label="CCIW" value={`${row.conference.w}-${row.conference.l}-${row.conference.d}`} />
               <Stat
-                label={started ? "Points" : "Points (all games)"}
-                value={String(shownRecord?.pts ?? 0)}
+                label="CCIW points"
+                value={String(pointsFor(row, "all", started))}
               />
               <Stat label="Overall" value={`${row.overall.w}-${row.overall.l}-${row.overall.d}`} />
               <Stat label="Goals" value={`${row.overall.gf} / ${row.overall.ga}`} />

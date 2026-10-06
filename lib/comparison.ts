@@ -143,14 +143,6 @@ export function compareTeams(input: ComparisonInput): Comparison {
         home: record(h.row.overall.w, h.row.overall.d, h.row.overall.l),
         away: record(a.row.overall.w, a.row.overall.d, a.row.overall.l),
       },
-      count("Points", h.row.overall.pts, a.row.overall.pts, "higher"),
-      average(
-        "Points per game",
-        perGame(h.row.overall.pts, h.games),
-        perGame(a.row.overall.pts, a.games),
-        "higher",
-        (value) => value.toFixed(2),
-      ),
       average(
         "Win rate",
         perGame(h.row.overall.w, h.games),
@@ -187,7 +179,13 @@ export function compareTeams(input: ComparisonInput): Comparison {
 
   const split = (row: StandingsRow, side: "home" | "away") => {
     const r = row[side];
-    return { text: `${record(r.w, r.d, r.l)} (${r.gf}-${r.ga})`, games: r.w + r.d + r.l, points: r.pts };
+    const c = side === "home" ? row.homeConference : row.awayConference;
+    return {
+      text: `${record(r.w, r.d, r.l)} (${r.gf}-${r.ga})`,
+      games: r.w + r.d + r.l,
+      points: c.pts,
+      conferenceGames: c.w + c.d + c.l,
+    };
   };
   const venue = (label: string, side: "home" | "away"): StatRow => {
     const x = split(h.row, side);
@@ -196,14 +194,14 @@ export function compareTeams(input: ComparisonInput): Comparison {
       label,
       home: x.games > 0 ? x.text : DASH,
       away: y.games > 0 ? y.text : DASH,
-      homeValue: perGame(x.points, x.games),
-      awayValue: perGame(y.points, y.games),
+      homeValue: perGame(x.points, x.conferenceGames),
+      awayValue: perGame(y.points, y.conferenceGames),
       better: "higher",
     };
   };
   const homeAway: StatGroup = {
     title: "Home and away",
-    note: "W-D-L, with goals for and against in brackets. Bars compare points per game.",
+    note: "W-D-L, with goals for and against in brackets. Bars compare CCIW points per CCIW game.",
     rows: [venue("At home", "home"), venue("Away from home", "away")],
   };
 
