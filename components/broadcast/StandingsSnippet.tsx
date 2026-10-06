@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { RankedTag } from "@/components/RankedTag";
 import { TeamBadge } from "@/components/TeamBadge";
 import { ExpandableRows } from "@/components/ExpandableRows";
 import { FormDots } from "@/components/FormDots";
@@ -36,8 +37,9 @@ export function StandingsSnippet({
               {line.rank}
             </span>
             <TeamBadge team={line.team} size="xs" />
-            <span className="min-w-0 flex-1 truncate text-[0.82rem] font-bold text-ink">
-              {line.team.name}
+            <span className="flex min-w-0 flex-1 items-center gap-1.5">
+              <span className="truncate text-[0.82rem] font-bold text-ink">{line.team.name}</span>
+              <RankedTag team={line.team} />
             </span>
             <FormDots form={line.row.form} />
             <span className="w-14 text-right text-[0.75rem] text-ink-muted tabular-nums">
