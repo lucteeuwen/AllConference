@@ -61,24 +61,6 @@ function shouldOffer(): boolean {
   return !isInstalled() && !wasDismissedRecently() && isTouchDevice();
 }
 
-/** The iOS share glyph: a box with an arrow leaving the top. */
-const shareIcon = (
-  <svg
-    viewBox="0 0 24 24"
-    className="size-4"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    role="img"
-    aria-label="Share"
-  >
-    <path d="M12 15V4M8.5 7.5L12 4l3.5 3.5" />
-    <path d="M7 11H6a1 1 0 00-1 1v7a1 1 0 001 1h12a1 1 0 001-1v-7a1 1 0 00-1-1h-1" />
-  </svg>
-);
-
 /**
  * A dismissible card inviting visitors to add the site to their home screen.
  * Android and Chromium browsers get a real Install button; iOS Safari has no
@@ -141,16 +123,6 @@ export function InstallPrompt() {
     track("install_prompt_dismissed", { mode });
   };
 
-  /** Opens iOS's share sheet, where "Add to Home Screen" lives. Cancelling it rejects, which is fine. */
-  const openShareSheet = async () => {
-    track("install_prompt_share_opened");
-    try {
-      await navigator.share({ title: document.title, url: window.location.href });
-    } catch {
-      // The visitor closed the sheet without choosing anything.
-    }
-  };
-
   const install = async () => {
     if (!installEvent) return;
     await installEvent.prompt();
@@ -183,18 +155,20 @@ export function InstallPrompt() {
         ) : (
           <p className="mt-0.5 text-xs text-ink-muted">
             Tap{" "}
-            {typeof navigator.share === "function" ? (
-              <button
-                type="button"
-                onClick={openShareSheet}
-                aria-label="Open the share menu"
-                className="mx-0.5 inline-flex size-7 items-center justify-center rounded-md bg-accent-soft align-middle text-accent transition active:scale-95"
-              >
-                {shareIcon}
-              </button>
-            ) : (
-              <span className="inline-block align-middle text-accent">{shareIcon}</span>
-            )}{" "}
+            <svg
+              viewBox="0 0 24 24"
+              className="-mt-0.5 inline size-4 text-accent"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              role="img"
+              aria-label="Share"
+            >
+              <path d="M12 15V4M8.5 7.5L12 4l3.5 3.5" />
+              <path d="M7 11H6a1 1 0 00-1 1v7a1 1 0 001 1h12a1 1 0 001-1v-7a1 1 0 00-1-1h-1" />
+            </svg>{" "}
             then <span className="font-semibold text-ink">Add to Home Screen</span>.
           </p>
         )}
