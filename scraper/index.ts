@@ -5,6 +5,7 @@ import { fetchBroadcasts, pickBroadcast } from "./broadcasts";
 import { createDb, must, upsertInChunks } from "./db";
 import { fetchJson, fetchText, requestsMade, unreachableHosts } from "./http";
 import { cacheLogo } from "./logos";
+import { parseNationalPoll, POLL_URL } from "./rankings";
 import { mergeGames, TeamResolver, type MatchRecord, type TeamRow } from "./merge";
 import { slugify } from "./normalize";
 import { estimatedFinish, isActive, LIVE_COLUMNS, livePatch, type LiveRow } from "./live";
@@ -77,7 +78,7 @@ async function loadTeams(db: SupabaseClient): Promise<TeamRow[]> {
     db
       .from("teams")
       .select(
-        "slug, name, full_name, abbr, location, venue, timezone, is_conference, sidearm_base_url, sidearm_sport_id, aliases, logo_url, logo_source_url",
+        "slug, name, full_name, abbr, location, venue, timezone, is_conference, sidearm_base_url, sidearm_sport_id, aliases, logo_url, logo_source_url, national_rank",
       ),
     "load teams",
   );
@@ -195,6 +196,7 @@ async function syncMatches(ctx: Context): Promise<void> {
       aliases: [],
       logo_url: null,
       logo_source_url: null,
+      national_rank: null,
     });
   }
 
@@ -276,6 +278,31 @@ async function syncMatches(ctx: Context): Promise<void> {
   }
 
   await syncLogos(ctx, resolver.logoSources);
+  await syncRankings(ctx);
+}
+
+/** Stores each team's place in the national poll, and clears teams that dropped out. */
+async function syncRankings(ctx: Context): Promise<void> {
+  try {
+    const poll = parseNationalPoll(await fetchText(POLL_URL));
+    // An empty poll means the page changed, not that nobody is ranked.
+    if (poll.length === 0) {
+      note(ctx, "WARN national poll had no rows, keeping stored ranks");
+      return;
+    }
+
+    const bySchool = new Map(poll.map((entry) => [entry.school.toLowerCase(), entry.rank]));
+    for (const team of ctx.teams) {
+      const names = [team.full_name, ...(team.is_conference ? [team.name, ...team.aliases] : [])];
+      const rank = names.map((name) => bySchool.get(name.toLowerCase())).find((value) => value !== undefined) ?? null;
+      if (rank === (team.national_rank ?? null)) continue;
+      await must(ctx.db.from("teams").update({ national_rank: rank }).eq("slug", team.slug), "save rank");
+      team.national_rank = rank;
+    }
+    note(ctx, `national poll: ${poll.length} ranked`);
+  } catch (error) {
+    note(ctx, `WARN national poll: ${(error as Error).message}`);
+  }
 }
 
 async function syncLogos(ctx: Context, sources: Map<string, string>): Promise<void> {

@@ -20,6 +20,8 @@ export type Team = {
   timezone: string | null;
   isConference: boolean;
   logoUrl: string | null;
+  /** Place in the national poll; null when unranked. */
+  nationalRank: number | null;
 };
 
 export type MatchStatus = "scheduled" | "live" | "final" | "postponed" | "canceled";

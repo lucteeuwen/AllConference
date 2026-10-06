@@ -14,4 +14,5 @@ export const TBC_TEAM: Team = {
   timezone: null,
   isConference: false,
   logoUrl: null,
+  nationalRank: null,
 };

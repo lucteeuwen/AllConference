@@ -33,6 +33,7 @@ const team = (slug: string, name: string, aliases: string[], venue = ""): TeamRo
   aliases,
   logo_url: null,
   logo_source_url: null,
+  national_rank: null,
 });
 
 const conference: TeamRow[] = [

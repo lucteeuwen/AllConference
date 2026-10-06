@@ -19,6 +19,7 @@ export type TeamRow = {
   aliases: string[];
   logo_url: string | null;
   logo_source_url: string | null;
+  national_rank: number | null;
 };
 
 export type NewTeam = {

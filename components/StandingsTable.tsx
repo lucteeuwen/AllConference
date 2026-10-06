@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { RankedTag } from "@/components/RankedTag";
 import { TeamBadge } from "@/components/TeamBadge";
 import { FormDots } from "@/components/FormDots";
 import { SlidingSegments } from "@/components/SlidingSegments";
@@ -132,6 +133,7 @@ export function StandingsTable({
                       <span className="font-semibold text-ink group-hover:text-accent">
                         {team.name}
                       </span>
+                      <RankedTag team={team} />
                     </Link>
                   </td>
                   <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{gp}</td>

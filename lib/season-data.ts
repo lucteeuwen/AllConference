@@ -48,6 +48,7 @@ type TeamRow = {
   timezone: string | null;
   is_conference: boolean;
   logo_url: string | null;
+  national_rank: number | null;
 };
 
 type MatchRow = {
@@ -123,6 +124,7 @@ function toTeam(row: TeamRow): Team {
     timezone: row.timezone,
     isConference: row.is_conference,
     logoUrl: row.logo_url,
+    nationalRank: row.national_rank,
   };
 }
 
@@ -170,7 +172,7 @@ export const getSeasonData = cache(async (): Promise<SeasonData> => {
     readAll<TeamRow>((from, to) =>
       db
         .from("teams")
-        .select("slug, name, full_name, nickname, abbr, primary_color, secondary_color, location, venue, timezone, is_conference, logo_url")
+        .select("slug, name, full_name, nickname, abbr, primary_color, secondary_color, location, venue, timezone, is_conference, logo_url, national_rank")
         .order("slug")
         .range(from, to),
     ),

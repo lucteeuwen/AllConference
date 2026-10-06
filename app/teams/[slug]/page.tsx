@@ -8,6 +8,7 @@ import { OverlapCard } from "@/components/broadcast/OverlapCard";
 import { TeamMatchList } from "@/components/matches/TeamMatchList";
 import { ScoreboardRail } from "@/components/broadcast/ScoreboardRail";
 import { Tabs } from "@/components/Tabs";
+import { RankedTag } from "@/components/RankedTag";
 import { TeamBadge } from "@/components/TeamBadge";
 import { FormDots } from "@/components/FormDots";
 import { PlayerLink } from "@/components/PlayerLink";
@@ -107,8 +108,9 @@ export default async function TeamPage({ params, searchParams }: Props) {
           <div className="slide-from-left flex flex-col items-center gap-3">
             <TeamBadge team={team} size="xl" ring />
             <div>
-              <h1 className="bc-title text-[1.5rem] text-white md:text-[1.9rem]">
+              <h1 className="bc-title flex flex-wrap items-center justify-center gap-2 text-[1.5rem] text-white md:text-[1.9rem]">
                 {team.fullName}
+                <RankedTag team={team} onDark />
               </h1>
               <p className="mt-1 text-[0.78rem] text-white/65">
                 {team.nickname} · {team.location}

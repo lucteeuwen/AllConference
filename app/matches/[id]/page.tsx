@@ -14,6 +14,7 @@ import { LiveRefresh } from "@/components/LiveRefresh";
 import { MatchHeroScore } from "@/components/matches/MatchHeroScore";
 import { MatchVideo } from "@/components/MatchVideo";
 import { PlayerLink } from "@/components/PlayerLink";
+import { RankedTag } from "@/components/RankedTag";
 import { TeamBadge } from "@/components/TeamBadge";
 import { TeamComparison } from "@/components/TeamComparison";
 import { Tabs } from "@/components/Tabs";
@@ -77,6 +78,7 @@ function LineupColumn({ side, lineup, lookup }: { side: MatchSide; lineup: Lineu
       <div className="mb-3 flex items-center gap-2.5">
         <TeamBadge team={side.team} size="sm" />
         <span className="text-[0.85rem] font-bold text-ink">{sideName(side)}</span>
+        <RankedTag team={side.team} />
       </div>
       <p className="bc-label mb-2 text-[0.65rem] text-ink-faint">Starting XI</p>
       <ul className="space-y-1.5">
@@ -186,8 +188,9 @@ export default async function MatchPage({ params, searchParams }: Props) {
           <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-start gap-3">
             <div className="slide-from-left flex flex-col items-center gap-2.5">
               <TeamBadge team={home} size="xl" ring />
-              <span className="text-center text-[0.78rem] font-semibold text-white">
+              <span className="flex flex-wrap items-center justify-center gap-1.5 text-center text-[0.78rem] font-semibold text-white">
                 {sideName(match.home)}
+                <RankedTag team={home} onDark />
               </span>
               <span className="text-[0.68rem] text-white/50">Home</span>
             </div>
@@ -203,8 +206,9 @@ export default async function MatchPage({ params, searchParams }: Props) {
 
             <div className="slide-from-right flex flex-col items-center gap-2.5">
               <TeamBadge team={away} size="xl" ring />
-              <span className="text-center text-[0.78rem] font-semibold text-white">
+              <span className="flex flex-wrap items-center justify-center gap-1.5 text-center text-[0.78rem] font-semibold text-white">
                 {sideName(match.away)}
+                <RankedTag team={away} onDark />
               </span>
               <span className="text-[0.68rem] text-white/50">Away</span>
             </div>
