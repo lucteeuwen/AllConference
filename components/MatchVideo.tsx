@@ -1,6 +1,23 @@
 import type { MatchVideo as Video } from "@/lib/types";
 import { VideoLink } from "@/components/VideoLink";
 
+/** Grayed-out stand-in shown when no livestream or recording was found. */
+export function MatchVideoUnavailable() {
+  return (
+    <button
+      type="button"
+      disabled
+      aria-disabled="true"
+      className="bc-label inline-flex cursor-not-allowed items-center gap-2 rounded-control border border-line bg-ground px-4 py-2.5 text-left text-[0.72rem] text-ink-faint"
+    >
+      <svg viewBox="0 0 16 16" className="size-3.5 shrink-0 opacity-60" fill="currentColor" aria-hidden="true">
+        <path d="M4 2.5v11l9-5.5z" />
+      </svg>
+      Match livestream or recording not available for this match
+    </button>
+  );
+}
+
 /**
  * A specific YouTube video plays inline. Everything else opens the provider in
  * a new tab (the same tab on mobile), since those players need a subscription.
