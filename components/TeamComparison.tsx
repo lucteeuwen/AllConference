@@ -52,7 +52,7 @@ function Value({ text, href, className }: { text: string; href?: string; classNa
 function Row({ row }: { row: StatRow }) {
   const winner = favoured(row);
   const value = (side: "home" | "away") =>
-    `min-w-0 text-[0.85rem] font-bold tabular-nums ${winner === side ? "text-accent" : "text-ink"}`;
+    `min-w-0 text-[0.85rem] font-bold wrap-anywhere tabular-nums ${winner === side ? "text-accent" : "text-ink"}`;
 
   return (
     <div className="border-b border-line py-2.5 last:border-0">
@@ -84,12 +84,12 @@ export function TeamComparison({
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-line pb-4">
           <div className="flex min-w-0 items-center gap-2.5">
             <TeamBadge team={home} size="md" />
-            <span className="min-w-0 text-[0.85rem] leading-tight font-black text-ink">{home.name}</span>
+            <span className="min-w-0 text-[0.85rem] leading-tight font-black wrap-anywhere text-ink">{home.name}</span>
           </div>
           <span className="bc-label text-[0.62rem] text-ink-faint">vs</span>
           <div className="flex min-w-0 flex-row-reverse items-center gap-2.5">
             <TeamBadge team={away} size="md" />
-            <span className="min-w-0 text-right text-[0.85rem] leading-tight font-black text-ink">{away.name}</span>
+            <span className="min-w-0 text-right text-[0.85rem] leading-tight font-black wrap-anywhere text-ink">{away.name}</span>
           </div>
         </div>
 

@@ -99,20 +99,6 @@ function Fact({ label, value }: { label: string; value: ReactNode }) {
   return <DetailRow label={label} value={value} />;
 }
 
-function ExternalLink({ href, children }: { href: string; children: string }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="bc-label inline-flex rounded-control border border-line px-3 py-2 text-[0.68rem] text-ink-muted transition hover:border-accent hover:text-accent"
-    >
-      {children}
-      <span className="sr-only"> (opens in a new tab)</span>
-    </a>
-  );
-}
-
 const resultTone: Record<Result, string> = { W: "bg-win", L: "bg-loss", D: "bg-draw" };
 
 /** "vs Wheaton" at home, "@ Wheaton" away. */
@@ -160,7 +146,7 @@ function GameRow({ game, teamSlug }: { game: PlayerGame; teamSlug: string }) {
         <TeamBadge team={opponent.team} size="sm" />
         <span className="min-w-0 flex-1 truncate text-[0.85rem] font-semibold text-ink">{opponent.name}</span>
 
-        <span className="flex shrink-0 items-center gap-2 text-[0.72rem] text-ink-muted">
+        <span className="flex shrink-0 flex-wrap items-center justify-end gap-2 text-[0.72rem] text-ink-muted">
           {Array.from({ length: game.goals }, (_, index) => (
             <EventIcon key={`g${index}`} type="goal" />
           ))}
@@ -237,13 +223,13 @@ export default async function PlayerPage({ params, searchParams }: Props) {
     <div className="bc-stack pt-4 md:pt-6">
       <section>
         <WashHero home={team}>
-          <div className="mb-5 flex items-center justify-between">
+          <div className="mb-5 flex items-center justify-between gap-3">
             <BackButton fallbackHref={`/teams/${team.slug}`} label="Back">
               <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </BackButton>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
                 {SEASON_LABEL}
               </span>
@@ -255,7 +241,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
             <PlayerPhoto player={player} team={team} photoUrl={profile?.photoUrl ?? null} size={128} />
             <div className="flex flex-col items-center gap-2 md:items-start">
               {subtitle ? <p className="bc-label text-[0.72rem] text-white/70">{subtitle}</p> : null}
-              <h1 className="bc-title text-[1.7rem] text-white md:text-[2.2rem]">{player.name}</h1>
+              <h1 className="bc-title text-[1.7rem] break-words text-white md:text-[2.2rem]">{player.name}</h1>
               <Link
                 href={`/teams/${team.slug}`}
                 className="flex items-center gap-2 text-[0.8rem] font-semibold text-white/80 transition hover:text-white"
@@ -307,8 +293,8 @@ export default async function PlayerPage({ params, searchParams }: Props) {
         </div>
 
         {active === "overview" ? (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="bc-card bc-pad bc-shadow">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="bc-card bc-pad bc-shadow min-w-0">
               <h2 className="bc-label mb-2 text-[0.7rem] text-ink-faint">Player facts</h2>
               <Fact
                 label="Team"
@@ -328,14 +314,9 @@ export default async function PlayerPage({ params, searchParams }: Props) {
               <Fact label="Previous school" value={profile?.previousSchool} />
               <Fact label="Major" value={profile?.major} />
               <Fact label="Captain" value={profile?.captain ? "Yes" : null} />
-              {profile?.bioUrl ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <ExternalLink href={profile.bioUrl}>Official bio</ExternalLink>
-                </div>
-              ) : null}
             </div>
 
-            <div className="bc-card bc-pad bc-shadow">
+            <div className="bc-card bc-pad bc-shadow min-w-0">
               <h2 className="bc-label mb-2 text-[0.7rem] text-ink-faint">Season stats</h2>
               <DetailRow label="Games played" value={stats.gp} />
               <DetailRow label="Games started" value={stats.gs} />

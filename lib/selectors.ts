@@ -203,12 +203,11 @@ export function competitionLabel(match: Match, long = false): string {
 /**
  * Trims a match to what a list row renders. The whole season crosses to the
  * browser on /matches so it can be regrouped in the reader's zone, and these
- * four fields are only ever read on a match's own page.
+ * three fields are only ever read on a match's own page.
  */
 export function slimForList(match: Match): Match {
   const slim = { ...match };
   delete slim.video;
-  delete slim.boxscoreUrl;
   delete slim.recapUrl;
   delete slim.lineups;
   return slim;

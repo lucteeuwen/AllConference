@@ -50,9 +50,9 @@ export function BroadcastHome({ data }: { data: HomeData }) {
               </p>
 
               <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                <div className="slide-from-left flex flex-col items-center gap-2">
+                <div className="slide-from-left flex min-w-0 flex-col items-center gap-2">
                   <TeamBadge team={hero.home.team} size="lg" ring />
-                  <span className="text-[0.75rem] font-semibold text-white">{hero.home.team.name}</span>
+                  <span className="text-center text-[0.75rem] font-semibold break-words text-white">{hero.home.team.name}</span>
                 </div>
 
                 <div className="relative">
@@ -70,9 +70,9 @@ export function BroadcastHome({ data }: { data: HomeData }) {
                   </p>
                 </div>
 
-                <div className="slide-from-right flex flex-col items-center gap-2">
+                <div className="slide-from-right flex min-w-0 flex-col items-center gap-2">
                   <TeamBadge team={hero.away.team} size="lg" ring />
-                  <span className="text-[0.75rem] font-semibold text-white">{hero.away.team.name}</span>
+                  <span className="text-center text-[0.75rem] font-semibold break-words text-white">{hero.away.team.name}</span>
                 </div>
               </div>
 
@@ -120,7 +120,7 @@ export function BroadcastHome({ data }: { data: HomeData }) {
       <Reveal>
         <section>
           <SectionHeader title="Coming up" action="All Matches" href="/matches" />
-          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {data.upcoming.map((match) => {
               const matchHome = match.home.team;
               const matchAway = match.away.team;
