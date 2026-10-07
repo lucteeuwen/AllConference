@@ -12,7 +12,7 @@ import { Boxscore } from "@/components/broadcast/Boxscore";
 import { sideName } from "@/components/broadcast/MatchRow";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { MatchHeroScore } from "@/components/matches/MatchHeroScore";
-import { MatchVideo } from "@/components/MatchVideo";
+import { MatchVideo, MatchVideoUnavailable } from "@/components/MatchVideo";
 import { PlayerLink } from "@/components/PlayerLink";
 import { RankedTag } from "@/components/RankedTag";
 import { TeamBadge } from "@/components/TeamBadge";
@@ -281,14 +281,12 @@ export default async function MatchPage({ params, searchParams }: Props) {
 
         {active === "details" ? (
           <div className="grid gap-4 lg:grid-cols-2">
-            {video ? (
-              <div className="bc-card bc-pad bc-shadow lg:col-span-2">
-                <h2 className="bc-label mb-3 text-[0.7rem] text-ink-faint">
-                  {effective === "full-time" ? "Watch the replay" : "Watch"}
-                </h2>
-                <MatchVideo video={video} live={live} />
-              </div>
-            ) : null}
+            <div className="bc-card bc-pad bc-shadow lg:col-span-2">
+              <h2 className="bc-label mb-3 text-[0.7rem] text-ink-faint">
+                {effective === "full-time" ? "Watch the replay" : "Watch"}
+              </h2>
+              {video ? <MatchVideo video={video} live={live} /> : <MatchVideoUnavailable />}
+            </div>
 
             <div className="bc-card bc-pad bc-shadow">
               <h2 className="bc-label mb-2 text-[0.7rem] text-ink-faint">Match facts</h2>
