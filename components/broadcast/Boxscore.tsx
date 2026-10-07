@@ -51,8 +51,8 @@ export function Boxscore({
   const homeShare = Math.round((points[0] / total) * 100);
 
   return (
-    <div className={`grid gap-5 ${comparable ? "md:grid-cols-[1fr_auto] md:gap-8" : ""}`}>
-      <div>
+    <div className={`grid grid-cols-1 gap-5 ${comparable ? "md:grid-cols-[1fr_auto] md:gap-8" : ""}`}>
+      <div className="min-w-0 overflow-x-auto">
         {showHeading ? (
           <h3 className="bc-label mb-3 text-[0.7rem] text-ink-faint">Boxscore</h3>
         ) : null}
@@ -113,7 +113,7 @@ export function Boxscore({
           {halves.map((half, index) => (
             <p key={half.key} className="flex items-center gap-1.5 py-0.5">
               <span className="team-color size-2 rounded-full" style={{ background: half.team.primary }} />
-              <span className="font-semibold text-ink">{half.team.name}</span>
+              <span className="min-w-0 font-semibold wrap-anywhere text-ink">{half.team.name}</span>
               <span className="ml-auto pl-3 font-black text-ink tabular-nums">
                 {index === 0 ? homeShare : 100 - homeShare}%
               </span>

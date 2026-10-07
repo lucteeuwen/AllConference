@@ -105,7 +105,6 @@ export type Match = {
   events: MatchEvent[];
   lineups?: { home: Lineup; away: Lineup };
   video?: MatchVideo;
-  boxscoreUrl?: string;
   recapUrl?: string;
 };
 
@@ -136,7 +135,6 @@ export type Player = {
  */
 export type PlayerProfile = {
   photoUrl: string | null;
-  bioUrl: string | null;
   /** "Midfielder/Forward". */
   positionLong: string | null;
   weight: string | null;

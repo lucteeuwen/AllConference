@@ -14,6 +14,7 @@ import { LiveRefresh } from "@/components/LiveRefresh";
 import { MatchHeroScore } from "@/components/matches/MatchHeroScore";
 import { MatchVideo, MatchVideoUnavailable } from "@/components/MatchVideo";
 import { PlayerLink } from "@/components/PlayerLink";
+import { VideoLink } from "@/components/VideoLink";
 import { RankedTag } from "@/components/RankedTag";
 import { TeamBadge } from "@/components/TeamBadge";
 import { TeamComparison } from "@/components/TeamComparison";
@@ -118,7 +119,7 @@ function LineupColumn({
   lookup: PlayerLookup;
 }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mb-3 flex items-center gap-2.5">
         <TeamBadge team={side.team} size="sm" />
         <span className="text-[0.85rem] font-bold text-ink">{sideName(side)}</span>
@@ -131,7 +132,7 @@ function LineupColumn({
             <span className="w-6 shrink-0 text-right font-bold text-ink-faint tabular-nums">
               {player.number ?? ""}
             </span>
-            <PlayerLink player={lookup(side.teamSlug, player.name)} className="truncate font-medium text-ink">
+            <PlayerLink player={lookup(side.teamSlug, player.name)} className="min-w-0 truncate font-medium text-ink">
               {player.name}
             </PlayerLink>
             <PlayerMarks marks={playerMarks(events, side, player.name, lookup)} />
@@ -150,7 +151,7 @@ function LineupColumn({
                 <span className="w-6 shrink-0 text-right font-bold text-ink-faint tabular-nums">
                   {player.number ?? ""}
                 </span>
-                <PlayerLink player={lookup(side.teamSlug, player.name)} className="truncate">
+                <PlayerLink player={lookup(side.teamSlug, player.name)} className="min-w-0 truncate">
                   {player.name}
                 </PlayerLink>
                 <PlayerMarks marks={playerMarks(events, side, player.name, lookup)} />
@@ -165,15 +166,13 @@ function LineupColumn({
 
 function ExternalLink({ href, children }: { href: string; children: string }) {
   return (
-    <a
+    <VideoLink
       href={href}
-      target="_blank"
-      rel="noopener noreferrer"
       className="bc-label inline-flex rounded-control border border-line px-3 py-2 text-[0.68rem] text-ink-muted transition hover:border-accent hover:text-accent"
     >
       {children}
-      <span className="sr-only"> (opens in a new tab)</span>
-    </a>
+      <span className="sr-only"> (external link)</span>
+    </VideoLink>
   );
 }
 
@@ -213,13 +212,13 @@ export default async function MatchPage({ params, searchParams }: Props) {
       <LiveRefresh timings={[timing]} renderedAt={now} />
       <section>
         <WashHero home={home} away={away} celebrate={live ? match.id : false}>
-          <div className="mb-5 flex items-center justify-between">
+          <div className="mb-5 flex items-center justify-between gap-3">
             <BackButton fallbackHref="/matches" label="Back">
               <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </BackButton>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
                 {competitionLabel(match, true)}
               </span>
@@ -232,9 +231,9 @@ export default async function MatchPage({ params, searchParams }: Props) {
           </p>
 
           <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-start gap-3">
-            <div className="slide-from-left flex flex-col items-center gap-2.5">
+            <div className="slide-from-left flex min-w-0 flex-col items-center gap-2.5">
               <TeamBadge team={home} size="xl" ring />
-              <span className="flex flex-wrap items-center justify-center gap-1.5 text-center text-[0.78rem] font-semibold text-white">
+              <span className="flex flex-wrap items-center justify-center gap-1.5 text-center text-[0.78rem] font-semibold break-words text-white">
                 {sideName(match.home)}
                 <RankedTag team={home} onDark />
               </span>
@@ -250,9 +249,9 @@ export default async function MatchPage({ params, searchParams }: Props) {
               renderedAt={now}
             />
 
-            <div className="slide-from-right flex flex-col items-center gap-2.5">
+            <div className="slide-from-right flex min-w-0 flex-col items-center gap-2.5">
               <TeamBadge team={away} size="xl" ring />
-              <span className="flex flex-wrap items-center justify-center gap-1.5 text-center text-[0.78rem] font-semibold text-white">
+              <span className="flex flex-wrap items-center justify-center gap-1.5 text-center text-[0.78rem] font-semibold break-words text-white">
                 {sideName(match.away)}
                 <RankedTag team={away} onDark />
               </span>
@@ -265,7 +264,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
           {hasScore ? (
             <Boxscore match={match} standings={standings} />
           ) : (
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <DetailRow label="Kickoff" value={<KickoffValue match={match} />} />
               <DetailRow label="Venue" value={match.venue || "TBA"} />
               <DetailRow label="Competition" value={competitionLabel(match)} />
@@ -280,32 +279,33 @@ export default async function MatchPage({ params, searchParams }: Props) {
         </div>
 
         {active === "details" ? (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="bc-card bc-pad bc-shadow lg:col-span-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="bc-card bc-pad bc-shadow min-w-0 lg:col-span-2">
               <h2 className="bc-label mb-3 text-[0.7rem] text-ink-faint">
                 {effective === "full-time" ? "Watch the replay" : "Watch"}
               </h2>
               {video ? <MatchVideo video={video} live={live} /> : <MatchVideoUnavailable played={effective === "full-time"} />}
             </div>
 
-            <div className="bc-card bc-pad bc-shadow">
+            <div className="bc-card bc-pad bc-shadow min-w-0 overflow-x-auto">
               <h2 className="bc-label mb-2 text-[0.7rem] text-ink-faint">Match facts</h2>
-              <KickoffRows match={match} />
-              <DetailRow label="Venue" value={match.venue || "TBA"} />
-              <DetailRow label="Competition" value={competitionLabel(match, true)} />
-              {match.referee ? <DetailRow label="Referee" value={match.referee} /> : null}
-              {match.attendance ? (
-                <DetailRow label="Attendance" value={match.attendance.toLocaleString("en-US")} />
-              ) : null}
-              {match.boxscoreUrl || match.recapUrl ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {match.boxscoreUrl ? <ExternalLink href={match.boxscoreUrl}>Official box score</ExternalLink> : null}
-                  {match.recapUrl ? <ExternalLink href={match.recapUrl}>Match recap</ExternalLink> : null}
-                </div>
-              ) : null}
+              <div className="w-fit min-w-full">
+                <KickoffRows match={match} />
+                <DetailRow label="Venue" value={match.venue || "TBA"} />
+                <DetailRow label="Competition" value={competitionLabel(match, true)} />
+                {match.referee ? <DetailRow label="Referee" value={match.referee} /> : null}
+                {match.attendance ? (
+                  <DetailRow label="Attendance" value={match.attendance.toLocaleString("en-US")} />
+                ) : null}
+                {match.recapUrl ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <ExternalLink href={match.recapUrl}>Match recap</ExternalLink>
+                  </div>
+                ) : null}
+              </div>
             </div>
 
-            <div className="bc-card bc-pad bc-shadow">
+            <div className="bc-card bc-pad bc-shadow min-w-0">
               <h2 className="bc-label mb-3 text-[0.7rem] text-ink-faint">Timeline</h2>
               {match.events.length === 0 ? (
                 <p className="py-4 text-center text-[0.82rem] text-ink-muted">
@@ -344,7 +344,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
 
         {active === "lineups" && match.lineups ? (
           <div className="bc-card bc-pad bc-shadow">
-            <div className="grid gap-8 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
               <LineupColumn side={match.home} lineup={match.lineups.home} events={match.events} lookup={lookup} />
               <LineupColumn side={match.away} lineup={match.lineups.away} events={match.events} lookup={lookup} />
             </div>

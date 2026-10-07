@@ -62,7 +62,7 @@ export function TeamFilter({ options, selectedCount, clearHref }: Props) {
       </button>
 
       {open ? (
-        <div className="absolute top-full left-0 z-30 mt-2 w-60 overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_20px_40px_-20px_rgba(16,24,40,0.4)]">
+        <div className="absolute top-full left-0 z-30 mt-2 w-60 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_20px_40px_-20px_rgba(16,24,40,0.4)]">
           <div className="max-h-72 overflow-y-auto py-1">
             {options.map((option) => (
               <Link

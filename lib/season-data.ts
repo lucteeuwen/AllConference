@@ -76,7 +76,6 @@ type MatchRow = {
   attendance: number | null;
   referee: string | null;
   broadcast_url: string | null;
-  boxscore_url: string | null;
   recap_url: string | null;
 };
 
@@ -164,7 +163,6 @@ function toMatch(row: MatchRow, teams: Map<string, Team>): Match {
     events: [],
     // Only the game's own stream, as the scraper matched it; never a channel page.
     video: exactVideo(row.broadcast_url),
-    boxscoreUrl: row.boxscore_url ?? undefined,
     recapUrl: row.recap_url ?? undefined,
   };
 }
@@ -186,7 +184,7 @@ export const getSeasonData = cache(async (): Promise<SeasonData> => {
       db
         .from("matches")
         .select(
-          "id, date, finished_at, status, minute, started_at, home_slug, away_slug, home_placeholder, away_placeholder, home_score, away_score, home_pens, away_pens, venue, timezone, time_tbd, is_conference, stage, bracket_slot, attendance, referee, broadcast_url, boxscore_url, recap_url",
+          "id, date, finished_at, status, minute, started_at, home_slug, away_slug, home_placeholder, away_placeholder, home_score, away_score, home_pens, away_pens, venue, timezone, time_tbd, is_conference, stage, bracket_slot, attendance, referee, broadcast_url, recap_url",
         )
         .eq("season", SEASON)
         .order("date")
@@ -331,7 +329,6 @@ export function getCardCounts(slugs: string[]): Promise<CardCounts> {
 /** The profile columns the player page reads; absent until the migration runs. */
 type ProfileRow = {
   photo_url?: string | null;
-  bio_url?: string | null;
   position_long?: string | null;
   weight?: string | null;
   high_school?: string | null;
@@ -358,7 +355,6 @@ type ProfileRow = {
 function toProfile(row: ProfileRow): PlayerProfile {
   return {
     photoUrl: row.photo_url ?? null,
-    bioUrl: row.bio_url ?? null,
     positionLong: row.position_long ?? null,
     weight: row.weight ?? null,
     highSchool: row.high_school ?? null,

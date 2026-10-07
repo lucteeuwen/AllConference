@@ -15,7 +15,7 @@ export function DetailRow({
 }) {
   return (
     <div className="bc-row flex items-baseline justify-between gap-4 border-b border-line last:border-0">
-      <span className="text-[0.78rem] text-ink-muted">{label}</span>
+      <span className="shrink-0 text-[0.78rem] text-ink-muted">{label}</span>
       <span className="text-right text-[0.78rem] font-semibold text-ink">
         {value}
         {note ? <span className="ml-1.5 font-normal text-ink-faint">{note}</span> : null}

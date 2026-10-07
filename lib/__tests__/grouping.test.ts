@@ -81,12 +81,10 @@ describe("slimForList", () => {
         exact: true,
         platform: "YouTube",
       },
-      boxscoreUrl: "https://example.test/box",
       recapUrl: "https://example.test/recap",
     };
     const slim = slimForList(full);
     expect(slim.video).toBeUndefined();
-    expect(slim.boxscoreUrl).toBeUndefined();
     expect(slim.recapUrl).toBeUndefined();
     expect(slim.id).toBe(full.id);
     expect(slim.date).toBe(full.date);
