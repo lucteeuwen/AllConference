@@ -285,7 +285,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
               <h2 className="bc-label mb-3 text-[0.7rem] text-ink-faint">
                 {effective === "full-time" ? "Watch the replay" : "Watch"}
               </h2>
-              {video ? <MatchVideo video={video} live={live} /> : <MatchVideoUnavailable />}
+              {video ? <MatchVideo video={video} live={live} /> : <MatchVideoUnavailable played={effective === "full-time"} />}
             </div>
 
             <div className="bc-card bc-pad bc-shadow">

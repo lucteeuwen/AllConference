@@ -2,7 +2,7 @@ import type { MatchVideo as Video } from "@/lib/types";
 import { VideoLink } from "@/components/VideoLink";
 
 /** Grayed-out stand-in shown when no livestream or recording was found. */
-export function MatchVideoUnavailable() {
+export function MatchVideoUnavailable({ played }: { played: boolean }) {
   return (
     <button
       type="button"
@@ -13,7 +13,7 @@ export function MatchVideoUnavailable() {
       <svg viewBox="0 0 16 16" className="size-3.5 shrink-0 opacity-60" fill="currentColor" aria-hidden="true">
         <path d="M4 2.5v11l9-5.5z" />
       </svg>
-      Match livestream or recording not available for this match
+      {played ? "Replay not available" : "Livestream not available"}
     </button>
   );
 }
