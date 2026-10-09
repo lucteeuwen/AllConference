@@ -45,7 +45,9 @@ export function TeamBadge({ team, size = "md", ring = false }: Props) {
           width={box - inset * 2}
           height={box - inset * 2}
           className="size-full object-contain"
-          unoptimized={team.logoUrl.split("?")[0].endsWith(".svg")}
+          // The scraper already stores logos small (scraper/logos.ts), so
+          // skip Vercel's optimizer and its transformation quota.
+          unoptimized
         />
       </span>
     );
