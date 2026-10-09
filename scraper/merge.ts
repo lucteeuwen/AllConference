@@ -70,8 +70,12 @@ export type MatchRecord = {
 export class TeamResolver {
   private byAlias = new Map<string, string>();
   readonly created = new Map<string, NewTeam>();
-  /** Logo candidates seen in the feeds, first one wins. */
-  readonly logoSources = new Map<string, string>();
+  /**
+   * Every logo URL the feeds offer per team. Each school hosts its own copy of
+   * an opponent's logo, so the caller picks one that does not depend on which
+   * feed answered first.
+   */
+  readonly logoSources = new Map<string, Set<string>>();
 
   constructor(private teams: TeamRow[]) {
     for (const team of teams) {
@@ -91,7 +95,7 @@ export class TeamResolver {
     const clean = cleanText(name);
     const known = this.byAlias.get(clean.toLowerCase());
     if (known) {
-      if (logo && !this.logoSources.has(known)) this.logoSources.set(known, logo);
+      this.addLogo(known, logo);
       return known;
     }
 
@@ -114,8 +118,15 @@ export class TeamResolver {
       this.byAlias.set(`slug:${slug}`, slug);
     }
     this.byAlias.set(clean.toLowerCase(), slug);
-    if (logo && !this.logoSources.has(slug)) this.logoSources.set(slug, logo);
+    this.addLogo(slug, logo);
     return slug;
+  }
+
+  private addLogo(slug: string, logo: string | null): void {
+    if (!logo) return;
+    const seen = this.logoSources.get(slug);
+    if (seen) seen.add(logo);
+    else this.logoSources.set(slug, new Set([logo]));
   }
 
   venueFor(slug: string): string {

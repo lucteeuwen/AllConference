@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { LIVE, SEASON, SEASON_START } from "./config";
 import { createDb, must, upsertInChunks } from "./db";
 import { fetchJson, fetchText, requestsMade, unreachableHosts } from "./http";
-import { cacheLogo } from "./logos";
+import { cacheLogo, pickLogoSource } from "./logos";
 import { parseNationalPoll, POLL_URL } from "./rankings";
 import { mergeGames, TeamResolver, type MatchRecord, type TeamRow } from "./merge";
 import { slugify } from "./normalize";
@@ -17,7 +17,7 @@ import { buildBracket, type SlotRow } from "./tournament";
 import { resolveWatchLinks, type WatchSource } from "./watch";
 
 /**
- * npm run scrape [-- --rosters] [--dry-run] [--no-live] [--json] [--auto | --live-only]
+ * npm run scrape [-- --rosters] [--refresh-logos] [--dry-run] [--no-live] [--json] [--auto | --live-only]
  *
  *  1. Read every CCIW school's SIDEARM schedule feed and merge the two views
  *     of each conference game into one match.
@@ -31,12 +31,14 @@ import { resolveWatchLinks, type WatchSource } from "./watch";
  * `--auto` is what the workflow runs every five minutes: a full pass if the
  * last one is more than 14 minutes old, otherwise straight to live mode.
  * `--live-only` skips the full pass and exits within seconds if nothing is on.
+ * `--refresh-logos` uploads every logo again, even when its source is unchanged.
  */
 
 const args = new Set(process.argv.slice(2));
 const options = {
   dryRun: args.has("--dry-run"),
   rosters: args.has("--rosters"),
+  refreshLogos: args.has("--refresh-logos"),
   live: !args.has("--no-live"),
   json: args.has("--json"),
   auto: args.has("--auto"),
@@ -308,10 +310,12 @@ async function syncRankings(ctx: Context): Promise<void> {
   }
 }
 
-async function syncLogos(ctx: Context, sources: Map<string, string>): Promise<void> {
-  for (const [slug, source] of sources) {
+async function syncLogos(ctx: Context, sources: Map<string, Set<string>>): Promise<void> {
+  for (const [slug, candidates] of sources) {
     const team = ctx.teams.find((row) => row.slug === slug);
-    if (!team || (team.logo_source_url === source && team.logo_url)) continue;
+    const source = pickLogoSource(team?.logo_source_url ?? null, candidates);
+    if (!team || !source) continue;
+    if (team.logo_source_url === source && team.logo_url && !options.refreshLogos) continue;
     try {
       const url = await cacheLogo(ctx.db, slug, source);
       await must(

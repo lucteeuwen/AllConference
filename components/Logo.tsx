@@ -1,4 +1,6 @@
 import Image from "next/image";
+import logoMarkWhite from "@/public/brand/logo-mark-white.png";
+import logoTile from "@/public/brand/logo-tile.png";
 
 /**
  * The AllConference mark in white with a transparent background, for the navy
@@ -7,10 +9,8 @@ import Image from "next/image";
 export function LogoMark({ className = "", title }: { className?: string; title?: string }) {
   return (
     <Image
-      src="/brand/logo-mark-white.png"
+      src={logoMarkWhite}
       alt={title ?? ""}
-      width={687}
-      height={491}
       className={className}
     />
   );
@@ -20,7 +20,7 @@ export function LogoMark({ className = "", title }: { className?: string; title?
 export function LogoTile({ className = "" }: { className?: string }) {
   return (
     <span className={`relative block shrink-0 ${className}`}>
-      <Image src="/brand/logo-tile.png" alt="" fill sizes="40px" className="object-contain" />
+      <Image src={logoTile} alt="" fill sizes="40px" className="object-contain" />
     </span>
   );
 }
