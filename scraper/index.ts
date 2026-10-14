@@ -7,9 +7,10 @@ import { cacheLogo } from "./logos";
 import { parseNationalPoll, POLL_URL } from "./rankings";
 import { mergeGames, TeamResolver, type MatchRecord, type TeamRow } from "./merge";
 import { slugify } from "./normalize";
-import { estimatedFinish, isActive, LIVE_COLUMNS, livePatch, type LiveRow } from "./live";
+import { estimatedFinish, isActive, keepAhead, LIVE_COLUMNS, livePatch, type LiveRow } from "./live";
 import { parseBoxScore, type BoxSide } from "./sidearm/boxscore";
 import { parseRoster, parseStats, rosterUrl, statsUrl } from "./sidearm/roster";
+import { applyLiveStats, LiveStatsReader } from "./sidearm/livestats";
 import { parseScoreboard, scoreboardUrl, type RawGame, type SidearmGame } from "./sidearm/schedule";
 import { isSplitZoneState } from "./timezones";
 import { startFromEvent } from "@/lib/live";
@@ -48,6 +49,9 @@ type ExistingMatch = {
   status: string;
   finished_at: string | null;
   events_scraped: boolean;
+  /** Not loaded in live-only runs, which never write them. */
+  home_score?: number | null;
+  away_score?: number | null;
   /** Not loaded in live-only runs, which never write it. */
   broadcast_url?: string | null;
 };
@@ -61,6 +65,7 @@ type Context = {
   existing: Map<string, ExistingMatch>;
   playerIds: Set<string>;
   matches: MatchRecord[];
+  liveStats: LiveStatsReader;
   log: string[];
 };
 
@@ -231,19 +236,20 @@ async function syncMatches(ctx: Context): Promise<void> {
 
   const rows = bracket.matches.map((match) => {
     // Drop the in-memory helpers that have no column.
-    const row = { ...match };
+    const before = ctx.existing.get(match.id);
+    const row = keepAhead({ ...match }, before);
     delete row.cciw;
     delete row.round;
-    const before = ctx.existing.get(match.id);
+    delete row.stats_url;
     let finishedAt = before?.finished_at ?? null;
-    if (match.status === "final" && !finishedAt) {
+    if (row.status === "final" && !finishedAt) {
       // Seen going final just now, unless the result was posted long after
       // the game (or this is the first import): then estimate full time.
       const estimate = estimatedFinish(match.date);
       const recent = Date.now() < Date.parse(estimate) + 60 * 60_000;
       finishedAt = before && before.status !== "final" && recent ? now : estimate;
     }
-    if (match.status !== "final") finishedAt = null;
+    if (row.status !== "final") finishedAt = null;
     return { ...row, finished_at: finishedAt, updated_at: now };
   });
   await upsertInChunks(ctx.db, "matches", rows, "id");
@@ -580,17 +586,36 @@ async function pollLive(ctx: Context, active: LiveRow[]): Promise<boolean> {
   const answered = schools.filter((team) => !ctx.failedFeeds.has(team.slug));
   if (answered.length === 0) return false;
 
+  const resolver = new TeamResolver(ctx.teams);
   const { matches } = mergeGames(
     answered.flatMap((team) => ctx.raws.get(team.slug) ?? []),
-    new TeamResolver(ctx.teams),
+    resolver,
   );
   const byId = new Map(matches.map((match) => [match.id, match]));
+
+  // The host's stat crew has the score as it happens; the scoreboard feeds
+  // usually only once the game is over.
+  const candidates = new Map<string, string[]>();
+  for (const row of active) {
+    const record = byId.get(row.id);
+    if (record) candidates.set(row.id, await ctx.liveStats.foldersFor(record));
+  }
+  const stats = await ctx.liveStats.read([...candidates.values()].flat());
 
   const now = Date.now();
   ctx.matches = [];
   for (const row of active) {
-    const record = byId.get(row.id);
-    if (!record) continue;
+    const scoreboard = byId.get(row.id);
+    if (!scoreboard) continue;
+    let record = scoreboard;
+    for (const folder of candidates.get(row.id) ?? []) {
+      const feed = stats.get(folder);
+      const applied = feed ? applyLiveStats(scoreboard, feed, resolver) : null;
+      if (applied) {
+        record = applied;
+        break;
+      }
+    }
     const patch = livePatch(row, record, now);
     if (patch) {
       await must(
@@ -715,6 +740,7 @@ async function main() {
     existing: new Map(),
     playerIds: new Set(),
     matches: [],
+    liveStats: new LiveStatsReader((message) => note(ctx, message)),
     log: [],
   };
 
@@ -733,7 +759,7 @@ async function main() {
   }
   // A dry run reads them too, so it shows which stored links a run would keep.
   const existing = await must<ExistingMatch[]>(
-    db.from("matches").select("id, status, finished_at, events_scraped, broadcast_url").eq("season", SEASON),
+    db.from("matches").select("id, status, finished_at, events_scraped, broadcast_url, home_score, away_score").eq("season", SEASON),
     "load matches",
   );
   existing.forEach((row) => ctx.existing.set(row.id, row));

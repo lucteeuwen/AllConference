@@ -103,7 +103,11 @@ workflow as a harmless backstop.
 is read, or 150 minutes after kickoff. Each minute it re-reads only the feeds of
 the schools in that match and its box score, and writes only the columns a game
 changes (status, score, `finished_at`, `started_at`); the season, bracket, logos
-and rosters are left to the full pass. The site does not wait for the scraper to
+and rosters are left to the full pass. Schools update their scoreboard feeds
+only after the game, so live mode also reads the host's SIDEARM Stats feed
+(`sidearmstats.com/<folder>/msoc/game.json`), which the stat crew updates as the
+game is played. That feed is used only when its day and teams match the match.
+The site does not wait for the scraper to
 show a match as live: from kickoff it counts the minute up itself, and once a
 match should be over it shows "Full time" until the final score arrives.
 `started_at` is the scraper's estimate of when play began, set when it first sees

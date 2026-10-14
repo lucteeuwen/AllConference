@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isActive, livePatch, type LiveRow } from "../live";
+import { isActive, keepAhead, livePatch, type LiveRow } from "../live";
 import type { MatchRecord } from "../merge";
 import { parseScoreboard, type SidearmGame } from "../sidearm/schedule";
 
@@ -121,5 +121,34 @@ describe("in-progress status", () => {
   it("leaves a scheduled game with no score scheduled", () => {
     expect(parse(game("A", [null, null]))).toBe("scheduled");
     expect(parse(game("A", ["1", "0"]))).toBe("live");
+  });
+});
+
+describe("keepAhead", () => {
+  const match = (extra: Partial<MatchRecord> = {}) => record({ status: "scheduled", ...extra });
+
+  it("keeps a live score the scoreboard feed has not caught up with", () => {
+    expect(keepAhead(match(), { status: "live", home_score: 1, away_score: 0 })).toMatchObject({
+      status: "live",
+      home_score: 1,
+      away_score: 0,
+    });
+  });
+
+  it("keeps a final result over a feed that still says live", () => {
+    expect(keepAhead(match({ status: "live", home_score: 1, away_score: 0 }), { status: "final", home_score: 2, away_score: 0 }))
+      .toMatchObject({ status: "final", home_score: 2 });
+  });
+
+  it("lets the feed through once it is level or ahead", () => {
+    const final = match({ status: "final", home_score: 3, away_score: 1 });
+    expect(keepAhead(final, { status: "final", home_score: 2, away_score: 1 })).toBe(final);
+    expect(keepAhead(final, { status: "live" })).toBe(final);
+    expect(keepAhead(final, undefined)).toBe(final);
+  });
+
+  it("does not hold back a postponement", () => {
+    const postponed = match({ status: "postponed" });
+    expect(keepAhead(postponed, { status: "live", home_score: 0, away_score: 0 })).toBe(postponed);
   });
 });

@@ -29,6 +29,25 @@ export const LIVE = {
 };
 
 /**
+ * SIDEARM Stats live feeds (see ./sidearm/livestats). Each member's folder, so
+ * its home games are read without first finding the folder on its stats page.
+ */
+export const LIVESTATS = {
+  base: "https://sidearmstats.com",
+  folders: {
+    augustana: "augustana",
+    carroll: "carrollu",
+    carthage: "carthage",
+    elmhurst: "elmhurst",
+    "illinois-wesleyan": "iwu",
+    millikin: "millikin",
+    "north-central": "ncc",
+    "north-park": "nparku",
+    wheaton: "wheaton",
+  } as Record<string, string>,
+};
+
+/**
  * The CCIW Network (cciwnetwork.com) is a portal over Hudl vCloud. Its config
  * lists these nine school sites; section 103 is men's soccer on every vCloud
  * site, so the other conferences' networks are read the same way.

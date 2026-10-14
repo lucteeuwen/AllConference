@@ -48,6 +48,34 @@ export function isActive(row: LiveRow, now = Date.now()): boolean {
 
 const RANK: Partial<Record<MatchStatus, number>> = { scheduled: 0, live: 1, final: 2 };
 
+export type StoredResult = {
+  status: string;
+  home_score?: number | null;
+  away_score?: number | null;
+};
+
+/**
+ * The full pass reads only the scoreboard feeds, which lag the live stats live
+ * mode reads. Where the stored match is further on than the feed (live while
+ * the feed still says scheduled, final while it says live), keep the stored
+ * status and score so a full pass never rolls a game back.
+ */
+export function keepAhead<T extends Pick<MatchRecord, "status" | "home_score" | "away_score">>(
+  match: T,
+  stored: StoredResult | undefined,
+): T {
+  if (!stored) return match;
+  const from = RANK[stored.status as MatchStatus];
+  const to = RANK[match.status];
+  if (from === undefined || to === undefined || from <= to) return match;
+  return {
+    ...match,
+    status: stored.status as MatchStatus,
+    home_score: stored.home_score ?? match.home_score,
+    away_score: stored.away_score ?? match.away_score,
+  };
+}
+
 /**
  * What to write for `row` given a fresh read of its feed, or null when nothing
  * changed. A feed that briefly looks behind what we stored (a school's page
