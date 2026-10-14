@@ -64,7 +64,20 @@ export function scoreboardUrl(baseUrl: string, sportId: number): string {
 }
 
 const CCIW_TOURNAMENT = /CCIW|College Conference of Illinois/i;
-const PLACEHOLDER = /CCIW Tournament\s+(Quarterfinal|Semifinal|Championship|Final)/i;
+const ROUND = "(First Round|Quarterfinals?|Semifinals?|Championship|Finals?)";
+/** "CCIW Tournament Semifinal", as most schools name a round with no opponent yet. */
+const PLACEHOLDER = new RegExp(`CCIW Tournament\\s+${ROUND}`, "i");
+/** "Quarterfinals" alone, as some name it on a game filed under the CCIW tournament. */
+const ROUND_ONLY = new RegExp(`^${ROUND}$`, "i");
+/** A CCIW tournament game that names neither a round nor an opponent yet. */
+const UNNAMED = /^(CCIW|College Conference of Illinois and Wisconsin)?\s*(Tournament)?\s*(TBA|TBD)?$/i;
+
+function roundOf(name: string): RawRound {
+  const clean = name.toLowerCase();
+  if (clean.startsWith("first") || clean.startsWith("quarter")) return "quarterfinal";
+  if (clean.startsWith("semi")) return "semifinal";
+  return "final";
+}
 
 function absolute(baseUrl: string, path: string | null | undefined): string | null {
   const clean = cleanText(path);
@@ -132,13 +145,15 @@ export function parseScoreboard(
     if (status === "skip") continue;
 
     const tournament = cleanText(game.tournament);
-    const placeholder = opponentName.match(PLACEHOLDER);
-    const isCciw = CCIW_TOURNAMENT.test(tournament) || Boolean(placeholder);
+    const cciwTournament = CCIW_TOURNAMENT.test(tournament);
+    const placeholder = opponentName.match(PLACEHOLDER) ?? (cciwTournament ? opponentName.match(ROUND_ONLY) : null);
+    const isCciw = cciwTournament || Boolean(placeholder);
+    // Nothing to place: the bracket slots are there without it.
+    if (isCciw && !placeholder && UNNAMED.test(opponentName)) continue;
     const isNcaa = !isCciw && /NCAA/i.test(`${tournament} ${opponentName}`);
     // NCAA placeholders ("NCAA Tournament" vs TBA) have nothing to show yet.
     if (isNcaa && /NCAA/i.test(opponentName)) continue;
 
-    const round = placeholder?.[1].toLowerCase();
     const pens = parsePens(game.result?.postscore, game.result?.prescore);
     const indicator = ["H", "A", "N"].includes(game.location_indicator)
       ? (game.location_indicator as RawGame["indicator"])
@@ -158,13 +173,7 @@ export function parseScoreboard(
       opponentImage: absolute(sourceBaseUrl, game.opponent?.image),
       location: cleanText(game.location),
       kind: isCciw ? "cciw" : isNcaa ? "ncaa" : "regular",
-      placeholderRound: placeholder
-        ? round === "quarterfinal"
-          ? "quarterfinal"
-          : round === "semifinal"
-            ? "semifinal"
-            : "final"
-        : null,
+      placeholderRound: placeholder ? roundOf(placeholder[1]) : null,
       teamScore: score(game.result?.team_score),
       opponentScore: score(game.result?.opponent_score),
       teamPens: pens?.[0] ?? null,

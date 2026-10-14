@@ -1,7 +1,9 @@
-# CCIW Men's Soccer
+# CCIW Soccer
 
 Results, fixtures, standings, the CCIW Tournament bracket and rosters for NCAA
-Division III College Conference of Illinois and Wisconsin men's soccer.
+Division III College Conference of Illinois and Wisconsin men's and women's
+soccer. Each sport has its own pages, under `/men` and `/women`; `/` goes to
+whichever the visitor used last.
 
 ```
 SIDEARM sites ──▶ scraper (GitHub Actions) ──▶ Supabase ──▶ Next.js site
@@ -16,11 +18,16 @@ Sports. The scraper in `scraper/` reads, for each school:
 | --- | --- |
 | `/services/adaptive_components.ashx?type=scoreboard&sport_id=…` | The season schedule as JSON: kickoff, home/away, score, tournament, box score link, stream link |
 | `/boxscore.aspx?id=…` | Goals and assists, cards, starting lineups, attendance, referee, stadium |
-| `/sports/mens-soccer/roster/<season>?view=2` | Roster: number, position, class year, height, hometown |
-| `/sports/mens-soccer/stats/<season>` | Season stats: games played and started, goals, assists |
+| `/sports/<mens-soccer\|womens-soccer>/roster/<season>?view=2` | Roster: number, position, class year, height, hometown |
+| `/sports/<mens-soccer\|womens-soccer>/stats/<season>` | Season stats: games played and started, goals, assists |
 
 A conference game appears in both schools' feeds; the two are merged into one
 match, and the host's record wins for kickoff, score, box score and stream.
+
+Each run does men's soccer, then women's. Schools (`teams`) are shared; what
+differs per sport (SIDEARM sport id, national rank) is in `team_sports`, and
+matches, players and the bracket carry a `sport` column. Women's ids start
+with `w-`, so a doubleheader cannot collide with the men's game.
 
 The scraper is polite on purpose: one request per second per site, a
 descriptive User-Agent, box scores fetched once per game, rosters once a day.
@@ -46,7 +53,7 @@ to everything else.
 
 Schools usually paste only their team page on the network into SIDEARM, so the
 full scrape also reads the network's own broadcast list (Hudl vCloud's public
-`/api/viewer/broadcast`, men's soccer section, the nine school sites in
+`/api/viewer/broadcast`, the sport's section, the nine school sites in
 `scraper/config.ts`) and links each game to its exact broadcast
 (`cciwnetwork.com/<school>/?B=<id>`, stored in `matches.broadcast_url`). A
 broadcast counts when it is within 12 hours of kickoff and names both schools

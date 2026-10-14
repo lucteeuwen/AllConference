@@ -12,21 +12,22 @@ import { PlayerPhoto } from "@/components/PlayerPhoto";
 import { TeamBadge } from "@/components/TeamBadge";
 import { Tabs } from "@/components/Tabs";
 import { formatShortDate } from "@/lib/format";
-import { buildGameLog, playerLookup, summarize } from "@/lib/players";
+import { buildGameLog, playerHref, playerLookup, summarize } from "@/lib/players";
 import { SEASON_LABEL } from "@/lib/season";
 import { getPlayerDetails, getSeasonData } from "@/lib/season-data";
 import { competitionLabel, getTeam, resultFor, standingsLines } from "@/lib/selectors";
+import { matchHref, parseSport, teamHref } from "@/lib/sport";
 import type { Player, PlayerGame, PlayerProfile, Result, Team } from "@/lib/types";
 
-type Props = PageProps<"/players/[id]">;
+type Props = PageProps<"/[sport]/players/[id]">;
 
 function findPlayer(players: Player[], id: string): Player | undefined {
   return players.find((player) => player.id === id);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  const data = await getSeasonData();
+  const { id, sport } = await params;
+  const data = await getSeasonData(parseSport(sport));
   const player = findPlayer(data.players, id);
   if (!player) return { title: "Player not found" };
   const team = getTeam(data, player.teamSlug);
@@ -118,7 +119,7 @@ function GameRow({ game, teamSlug }: { game: PlayerGame; teamSlug: string }) {
 
   return (
     <Link
-      href={`/matches/${match.id}`}
+      href={matchHref(match.id)}
       className="bc-card bc-pad bc-shadow block transition hover:border-accent/40"
     >
       <div className="mb-2.5 flex items-center justify-between gap-2">
@@ -179,8 +180,9 @@ function GameRow({ game, teamSlug }: { game: PlayerGame; teamSlug: string }) {
 }
 
 export default async function PlayerPage({ params, searchParams }: Props) {
-  const { id } = await params;
-  const data = await getSeasonData();
+  const { id, sport: sportParam } = await params;
+  const sport = parseSport(sportParam);
+  const data = await getSeasonData(sport);
   const player = findPlayer(data.players, id);
   if (!player) notFound();
   const team = getTeam(data, player.teamSlug);
@@ -205,8 +207,8 @@ export default async function PlayerPage({ params, searchParams }: Props) {
   const position = positionName(player, profile);
 
   const tabs = [
-    { key: "overview", label: "Overview", href: `/players/${player.id}?tab=overview` },
-    { key: "games", label: `Game log (${games.length})`, href: `/players/${player.id}?tab=games` },
+    { key: "overview", label: "Overview", href: playerHref(player, "?tab=overview") },
+    { key: "games", label: `Game log (${games.length})`, href: playerHref(player, "?tab=games") },
   ];
   const active = tabs.some((tab) => tab.key === requested) ? (requested as string) : "overview";
 
@@ -224,7 +226,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
       <section>
         <WashHero home={team}>
           <div className="mb-5 flex items-center justify-between gap-3">
-            <BackButton fallbackHref={`/teams/${team.slug}`} label="Back">
+            <BackButton fallbackHref={teamHref(sport, team.slug)} label="Back">
               <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -243,7 +245,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
               {subtitle ? <p className="bc-label text-[0.72rem] text-white/70">{subtitle}</p> : null}
               <h1 className="bc-title text-[1.7rem] break-words text-white md:text-[2.2rem]">{player.name}</h1>
               <Link
-                href={`/teams/${team.slug}`}
+                href={teamHref(sport, team.slug)}
                 className="flex items-center gap-2 text-[0.8rem] font-semibold text-white/80 transition hover:text-white"
               >
                 <TeamBadge team={team} size="xs" />
@@ -299,7 +301,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
               <Fact
                 label="Team"
                 value={
-                  <Link href={`/teams/${team.slug}`} className="hover:text-accent">
+                  <Link href={teamHref(sport, team.slug)} className="hover:text-accent">
                     {team.fullName}
                   </Link>
                 }
@@ -377,7 +379,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
                 label="First goal"
                 value={
                   summary.firstGoal ? (
-                    <Link href={`/matches/${summary.firstGoal.match.id}`} className="hover:text-accent">
+                    <Link href={matchHref(summary.firstGoal.match.id)} className="hover:text-accent">
                       {opponentOf(summary.firstGoal, team.slug).home ? "vs" : "@"}{" "}
                       {opponentOf(summary.firstGoal, team.slug).name},{" "}
                       {formatShortDate(summary.firstGoal.match.date, summary.firstGoal.match.timezone)}
@@ -389,7 +391,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
                 label="Latest appearance"
                 value={
                   summary.latest ? (
-                    <Link href={`/matches/${summary.latest.match.id}`} className="hover:text-accent">
+                    <Link href={matchHref(summary.latest.match.id)} className="hover:text-accent">
                       {opponentOf(summary.latest, team.slug).home ? "vs" : "@"}{" "}
                       {opponentOf(summary.latest, team.slug).name},{" "}
                       {formatShortDate(summary.latest.match.date, summary.latest.match.timezone)}

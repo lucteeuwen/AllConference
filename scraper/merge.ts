@@ -1,3 +1,4 @@
+import { DEFAULT_SPORT, idPrefix, type Sport } from "@/lib/sport";
 import type { MatchStage, MatchStatus } from "@/lib/types";
 import { SEASON } from "./config";
 import { abbreviate, centralDay, cleanText, shortName, slugify } from "./normalize";
@@ -35,6 +36,7 @@ export type NewTeam = {
 
 export type MatchRecord = {
   id: string;
+  sport: Sport;
   season: number;
   date: string;
   status: MatchStatus;
@@ -166,7 +168,7 @@ function pickPrimary(records: Resolved[]): Resolved {
  * wins for kickoff, score, box score and stream (the host produces them); the
  * visitor's record fills whatever the host left out.
  */
-export function mergeGames(raws: RawGame[], resolver: TeamResolver): {
+export function mergeGames(raws: RawGame[], resolver: TeamResolver, sport: Sport = DEFAULT_SPORT): {
   matches: MatchRecord[];
   placeholders: RawGame[];
 } {
@@ -243,8 +245,10 @@ export function mergeGames(raws: RawGame[], resolver: TeamResolver): {
     matches.push({
       // The id's day is the CONFERENCE's day, deliberately. It is embedded in
       // every /matches/<id> URL and in bracket_slots.match_id, so it must never
-      // follow a reader's zone.
-      id: `${centralDay(date)}-${home}-${away}`,
+      // follow a reader's zone. Women's ids carry a prefix, so a doubleheader
+      // does not collide with the men's game.
+      id: `${idPrefix(sport)}${centralDay(date)}-${home}-${away}`,
+      sport,
       season: SEASON,
       date,
       status,

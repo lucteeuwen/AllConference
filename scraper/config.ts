@@ -1,3 +1,5 @@
+import type { Sport } from "@/lib/sport";
+
 /** Scraper settings. The school list itself lives in the `teams` table. */
 
 export const SEASON = Number(process.env.SCRAPE_SEASON ?? new Date().getUTCFullYear());
@@ -8,7 +10,7 @@ export const SEASON_START = `${SEASON}-07-01`;
 export const CONFERENCE_TZ = "America/Chicago";
 
 export const USER_AGENT =
-  "AllConferenceBot/1.0 (CCIW men's soccer scores; +https://github.com/lucteeuwen/AllConference)";
+  "AllConferenceBot/1.0 (CCIW soccer scores; +https://github.com/lucteeuwen/AllConference)";
 
 /** Minimum gap between two requests to the same host. */
 export const HOST_INTERVAL_MS = 1000;
@@ -28,15 +30,38 @@ export const LIVE = {
   fullEveryMs: 14 * 60_000,
 };
 
+/** What differs between the two sports on the sites the scraper reads. */
+export const SPORT_SOURCES: Record<
+  Sport,
+  {
+    /** SIDEARM's path segment: `/sports/<path>/schedule`. */
+    path: string;
+    /** Hudl vCloud section, the same number on every vCloud site. */
+    hudlSection: number;
+    /** The United Soccer Coaches NCAA DIII poll. */
+    pollUrl: string;
+  }
+> = {
+  men: {
+    path: "mens-soccer",
+    hudlSection: 103,
+    pollUrl: "https://unitedsoccercoaches.org/rankings/college-rankings/ncaa-diii-men/",
+  },
+  women: {
+    path: "womens-soccer",
+    hudlSection: 3772,
+    pollUrl: "https://unitedsoccercoaches.org/rankings/college-rankings/ncaa-diii-women/",
+  },
+};
+
 /**
  * The CCIW Network (cciwnetwork.com) is a portal over Hudl vCloud. Its config
- * lists these nine school sites; section 103 is men's soccer on every vCloud
- * site, so the other conferences' networks are read the same way.
+ * lists these nine school sites; each sport is one section on every vCloud site
+ * (see SPORT_SOURCES), so the other conferences' networks are read the same way.
  */
 export const BROADCASTS = {
   api: "https://vcloud.hudl.com/api/viewer/broadcast",
   portal: "https://cciwnetwork.com",
-  section: 103,
   /** Hudl vCloud portals, where `<portal>/<site>/` is one school's channel. */
   portals: [
     "cciwnetwork.com",

@@ -1,3 +1,4 @@
+import type { Sport } from "@/lib/sport";
 import { titleNamesBoth, type NamedTeam } from "@/lib/video";
 import type { MatchRecord } from "./merge";
 
@@ -37,6 +38,7 @@ export function pickGame(
   candidates: Candidate[],
   teams: NamedTeam[],
   window: Window,
+  sport?: Sport,
 ): GamePick {
   if (!match.home_slug || !match.away_slug) return { url: null, candidates: 0 };
   const playing = [match.home_slug, match.away_slug];
@@ -49,7 +51,7 @@ export function pickGame(
         offset >= -window.before &&
         offset <= window.after &&
         !NOT_A_GAME.test(candidate.title) &&
-        titleNamesBoth(candidate.title, playing, teams, candidate.implied)
+        titleNamesBoth(candidate.title, playing, teams, candidate.implied, sport)
       );
     })
     .sort(

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LocalTime } from "@/components/LocalTime";
 import { TeamBadge } from "@/components/TeamBadge";
 import { winnerOf } from "@/components/broadcast/MatchRow";
+import { matchHref } from "@/lib/sport";
 import { TBC_TEAM } from "@/lib/teams";
 import type { Bracket as BracketData, BracketSlot, BracketSlotId, Match, Team } from "@/lib/types";
 
@@ -129,7 +130,7 @@ function SlotCard({
     "bc-card relative block w-full p-3 transition after:absolute after:top-1/2 after:-right-4 after:h-px after:w-4 after:bg-line";
 
   return match ? (
-    <Link href={`/matches/${match.id}`} className={`${className} hover:border-accent/50`}>
+    <Link href={matchHref(match.id)} className={`${className} hover:border-accent/50`}>
       {body}
     </Link>
   ) : (

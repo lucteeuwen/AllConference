@@ -3,8 +3,9 @@ import type { Position } from "@/lib/types";
 import { cleanText, firstLast, toInt } from "../normalize";
 
 /**
- * Roster (`/sports/mens-soccer/roster/<season>?view=2`, the table view) and
- * season stats (`/sports/mens-soccer/stats/<season>`). Column sets differ per
+ * Roster (`/sports/<sport>/roster/<season>?view=2`, the table view) and
+ * season stats (`/sports/<sport>/stats/<season>`), where `<sport>` is
+ * `mens-soccer` or `womens-soccer`. Column sets differ per
  * school, so roster cells are read by their SIDEARM class names.
  */
 
@@ -60,12 +61,12 @@ export type StatLine = {
   keeper: KeeperLine | null;
 };
 
-export function rosterUrl(baseUrl: string, season: number): string {
-  return `${baseUrl}/sports/mens-soccer/roster/${season}?view=2`;
+export function rosterUrl(baseUrl: string, season: number, sportPath = "mens-soccer"): string {
+  return `${baseUrl}/sports/${sportPath}/roster/${season}?view=2`;
 }
 
-export function statsUrl(baseUrl: string, season: number): string {
-  return `${baseUrl}/sports/mens-soccer/stats/${season}`;
+export function statsUrl(baseUrl: string, season: number, sportPath = "mens-soccer"): string {
+  return `${baseUrl}/sports/${sportPath}/stats/${season}`;
 }
 
 export function parsePosition(value: string): Position | null {

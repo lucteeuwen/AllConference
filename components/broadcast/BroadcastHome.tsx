@@ -16,6 +16,7 @@ import { timingOf } from "@/lib/hero";
 import { effectiveStatus } from "@/lib/live";
 import { competitionLabel, tableView } from "@/lib/selectors";
 import type { HomeData } from "@/lib/home";
+import { matchHref, SPORT_LABEL, sportHref } from "@/lib/sport";
 
 export function BroadcastHome({ data }: { data: HomeData }) {
   const table = tableView(data.standings);
@@ -32,7 +33,7 @@ export function BroadcastHome({ data }: { data: HomeData }) {
     <div className="bc-stack pb-2">
       <LiveRefresh timings={data.matches.map(timingOf)} renderedAt={data.renderedAt} idleMs={60_000} />
       <Lockup
-        title="CCIW Men's Soccer"
+        title={`CCIW ${SPORT_LABEL[data.sport]}`}
         subtitle="Live scores, results and standings"
         aside={
           <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
@@ -77,7 +78,7 @@ export function BroadcastHome({ data }: { data: HomeData }) {
               </div>
 
               <Link
-                href={`/matches/${hero.id}`}
+                href={matchHref(hero.id)}
                 className="bc-label mt-6 inline-flex rounded-control border border-white/25 px-5 py-2 text-[0.72rem] text-white transition hover:bg-white hover:text-navy"
               >
                 View match
@@ -104,14 +105,14 @@ export function BroadcastHome({ data }: { data: HomeData }) {
       <div className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
         <Reveal>
           <section>
-            <SectionHeader title="Standings" action="Full standings" href="/standings" />
-            <StandingsSnippet standings={table.lines} conferenceStarted={table.started} />
+            <SectionHeader title="Standings" action="Full standings" href={sportHref(data.sport, "/standings")} />
+            <StandingsSnippet sport={data.sport} standings={table.lines} conferenceStarted={table.started} />
           </section>
         </Reveal>
 
         <Reveal delay={90}>
           <section>
-            <SectionHeader title="Scoring leaders" action="Full list" href="/standings#scoring-leaders" />
+            <SectionHeader title="Scoring leaders" action="Full list" href={sportHref(data.sport, "/standings#scoring-leaders")} />
             <ScorersSnippet scorers={data.scorers} />
           </section>
         </Reveal>
@@ -119,7 +120,7 @@ export function BroadcastHome({ data }: { data: HomeData }) {
 
       <Reveal>
         <section>
-          <SectionHeader title="Coming up" action="All Matches" href="/matches" />
+          <SectionHeader title="Coming up" action="All Matches" href={sportHref(data.sport, "/matches")} />
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {data.upcoming.map((match) => {
               const matchHome = match.home.team;
@@ -127,7 +128,7 @@ export function BroadcastHome({ data }: { data: HomeData }) {
               return (
                 <Link
                   key={match.id}
-                  href={`/matches/${match.id}`}
+                  href={matchHref(match.id)}
                   className="bc-card bc-pad bc-shadow transition hover:border-accent/50"
                 >
                   <p className="bc-label mb-2.5 flex items-center justify-between text-[0.65rem] text-ink-faint">

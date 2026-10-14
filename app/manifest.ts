@@ -5,10 +5,10 @@ const NAVY = "#0a1e3c";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "CCIW Men's Soccer",
+    name: "CCIW Soccer",
     short_name: "CCIW Soccer",
     description:
-      "Results, fixtures, standings and rosters for College Conference of Illinois and Wisconsin men's soccer.",
+      "Results, fixtures, standings and rosters for College Conference of Illinois and Wisconsin men's and women's soccer.",
     start_url: "/",
     scope: "/",
     display: "standalone",

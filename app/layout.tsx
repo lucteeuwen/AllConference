@@ -13,12 +13,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  // Each sport's layout (app/[sport]/layout.tsx) names its own.
   title: {
-    default: "CCIW Men's Soccer",
-    template: "%s · CCIW Men's Soccer",
+    default: "CCIW Soccer",
+    template: "%s · CCIW Soccer",
   },
   description:
-    "Results, fixtures, standings and rosters for College Conference of Illinois and Wisconsin men's soccer.",
+    "Results, fixtures, standings and rosters for College Conference of Illinois and Wisconsin men's and women's soccer.",
   // Lets iOS launch the home-screen icon full screen. Other platforms read the manifest.
   appleWebApp: {
     capable: true,

@@ -1,10 +1,11 @@
 import "server-only";
+import { saysOtherSport, type Sport } from "@/lib/sport";
 import { titleVerdict } from "@/lib/video";
 import type { Match, MatchVideo, Team } from "@/lib/types";
 
 /**
- * Schools paste a link into each game, and some point at the wrong broadcast (a
- * women's game, another opponent's, an old link reused) or only at a channel.
+ * Schools paste a link into each game, and some point at the wrong broadcast (the
+ * other sport's game, another opponent's, an old link reused) or only at a channel.
  * The scraper only stores a link it matched to the game, but a school can hide
  * or delete a broadcast after that. Before showing a "watch" link, check it
  * against what the platform says now, and show nothing when it can't be
@@ -50,7 +51,7 @@ async function youtubeInfo(url: string): Promise<{ title: string; channel?: stri
 }
 
 /** FloCollege event links and short links carry the sport in their address. */
-async function floLooksWomens(url: string): Promise<boolean> {
+async function floWrongSport(url: string, sport: Sport): Promise<boolean> {
   let target = url;
   if (new URL(url).hostname === "flosports.link") {
     const response = await fetch(url, {
@@ -60,7 +61,7 @@ async function floLooksWomens(url: string): Promise<boolean> {
     });
     target = response.headers.get("location") ?? url;
   }
-  return /womens?\b/i.test(decodeURIComponent(target));
+  return saysOtherSport(decodeURIComponent(target), sport);
 }
 
 /** The link to show for this match: kept when confirmed, otherwise none. */
@@ -68,6 +69,7 @@ export async function verifyVideo(
   video: MatchVideo | undefined,
   match: Match,
   teams: Team[],
+  sport: Sport,
 ): Promise<MatchVideo | undefined> {
   if (!video?.exact) return undefined;
 
@@ -77,7 +79,7 @@ export async function verifyVideo(
     if (video.broadcastId) {
       const title = await hudlTitle(video.broadcastId);
       // No title (hidden or deleted), or one for another game.
-      return title && titleVerdict(title, playing, teams) === "match" ? video : undefined;
+      return title && titleVerdict(title, playing, teams, sport) === "match" ? video : undefined;
     }
 
     if (video.provider === "youtube" && video.embedUrl) {
@@ -86,11 +88,11 @@ export async function verifyVideo(
       // Still this game's video, but only YouTube itself will play it.
       if (info === "no-embed") return { ...video, embedUrl: undefined };
       // A school's own upload with a generic title stays; a contradiction does not.
-      if (info && titleVerdict(info.title, playing, teams) === "mismatch") return undefined;
+      if (info && titleVerdict(info.title, playing, teams, sport) === "mismatch") return undefined;
       return video;
     }
 
-    if (video.provider === "flo" && (await floLooksWomens(video.url))) return undefined;
+    if (video.provider === "flo" && (await floWrongSport(video.url, sport))) return undefined;
   } catch {
     // The platform couldn't be reached just now: that says nothing about the link.
   }
