@@ -153,6 +153,17 @@ describe("merge", () => {
     expect(iit?.home_slug).toBe("illinois-institute-of-technology");
     expect([iit?.home_score, iit?.away_score]).toEqual([1, 3]);
   });
+
+  it("collects every logo a team is offered", () => {
+    const teams = resolver();
+    teams.resolve("Loras College", "https://a.example/loras.png");
+    teams.resolve("Loras College", "https://b.example/loras.png");
+    teams.resolve("Loras College", "https://a.example/loras.png");
+    expect([...(teams.logoSources.get("loras") ?? [])]).toEqual([
+      "https://a.example/loras.png",
+      "https://b.example/loras.png",
+    ]);
+  });
 });
 
 describe("bracket", () => {

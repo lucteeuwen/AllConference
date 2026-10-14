@@ -7,6 +7,9 @@ const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
 
 const nextConfig: NextConfig = {
   images: {
+    // Optimized images (the brand marks) rarely change, so transform them at
+    // most once a month instead of every few hours.
+    minimumCacheTTL: 2678400,
     remotePatterns: supabaseHost
       ? [
           {
