@@ -36,7 +36,7 @@ export function BroadcastHome({ data }: { data: HomeData }) {
         title={`CCIW ${SPORT_LABEL[data.sport]}`}
         subtitle="Live scores, results and standings"
         aside={
-          <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
+          <span className="bc-label max-md:hidden rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
             NCAA DIII
           </span>
         }
