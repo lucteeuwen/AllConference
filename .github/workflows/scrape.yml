@@ -5,7 +5,8 @@ on:
     # GitHub's own schedule trigger is unreliable (observed 2-5h gaps), so the
     # real 30-minute tick is driven externally via workflow_dispatch with
     # auto=true below. These native schedules are kept as a harmless backstop:
-    # `--auto` does nothing when a full pass ran in the last 20 minutes.
+    # `--auto` does nothing when a full pass ran in the last 20 minutes and no
+    # match is on.
     - cron: "*/30 * * 8-11 *"
     # Rosters and season stats once a day, 5 AM Central.
     - cron: "0 10 * 8-11 *"
@@ -28,7 +29,8 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # A run with a match on polls it for up to 28 minutes (LIVE.budgetMs).
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,7 +52,7 @@ jobs:
           if [ "${{ github.event.schedule }}" = "0 10 * 8-11 *" ] || [ "${{ inputs.rosters }}" = "true" ]; then
             npm run scrape -- --rosters
           elif [ "${{ github.event.schedule }}" = "*/30 * * 8-11 *" ] || [ "${{ inputs.auto }}" = "true" ]; then
-            npm run scrape -- --auto
+            npm run scrape -- --auto --live
           else
             npm run scrape
           fi

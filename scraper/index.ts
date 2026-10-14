@@ -1,6 +1,6 @@
 import "./env";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { FULL_EVERY_MS, LIVE, SEASON, SEASON_START, SPORT_SOURCES } from "./config";
+import { FULL_EVERY_MS, LIVE, LIVESTATS, SEASON, SEASON_START, SPORT_SOURCES } from "./config";
 import { createDb, must, upsertInChunks } from "./db";
 import { fetchJson, fetchText, requestsMade, unreachableHosts } from "./http";
 import { cacheLogo, pickLogoSource } from "./logos";
@@ -8,9 +8,10 @@ import { PHOTO_BUCKET, resolvePhoto, storedPhotoPath, type StoredPhoto } from ".
 import { parseNationalPoll } from "./rankings";
 import { mergeGames, TeamResolver, type MatchRecord, type TeamRow } from "./merge";
 import { slugify } from "./normalize";
-import { estimatedFinish, isActive, LIVE_COLUMNS, livePatch, type LiveRow } from "./live";
+import { becomesActive, estimatedFinish, isActive, keepAhead, LIVE_COLUMNS, livePatch, type LiveRow } from "./live";
 import { parseBoxScore, type BoxSide } from "./sidearm/boxscore";
 import { parseRoster, parseStats, rosterUrl, statsUrl } from "./sidearm/roster";
+import { applyLiveStats, LiveStatsReader } from "./sidearm/livestats";
 import { parseScoreboard, scoreboardUrl, type RawGame, type SidearmGame } from "./sidearm/schedule";
 import { isSplitZoneState } from "./timezones";
 import { startFromEvent } from "@/lib/live";
@@ -27,16 +28,16 @@ import { resolveWatchLinks, type WatchSource } from "./watch";
  *  2. Fit the CCIW tournament into the bracket (TBC where undecided).
  *  3. Pull box scores for newly finished games, rosters and stats when asked,
  *     and logos and player photos when a school's URL for one changes.
- *  4. With `--live` only: if a match is on (15 min before kickoff until it
- *     ends), keep polling just that match -- its two schools' feeds and its box
- *     score, writing only the columns a game changes -- every minute for up to
- *     9 minutes. Off by default: SIDEARM does not update a game while it is
- *     played (see LIVE in ./config).
+ *  4. With `--live` only: while a match is on (15 min before kickoff until it
+ *     ends), poll just its host's SIDEARM Stats feed every minute, writing
+ *     only the columns a game changes, for up to 28 minutes -- staying on
+ *     while a match is about to start. Never the schools' own sites, which
+ *     don't update a game while it is played (see LIVE in ./config).
  *
  * `--auto` is what the workflow runs every 30 minutes: a full pass if the last
  * one is more than 20 minutes old, otherwise nothing (or live mode, with
  * `--live`). `--live-only` skips the full pass and exits within seconds if
- * nothing is on.
+ * nothing is on or about to be.
  * `--refresh-logos` uploads every logo again, even when its source is unchanged.
  */
 
@@ -57,6 +58,9 @@ type ExistingMatch = {
   status: string;
   finished_at: string | null;
   events_scraped: boolean;
+  /** Not loaded in live-only runs, which never write them. */
+  home_score?: number | null;
+  away_score?: number | null;
   /** Not loaded in live-only runs, which never write it. */
   broadcast_url?: string | null;
 };
@@ -71,6 +75,11 @@ type Context = {
   existing: Map<string, ExistingMatch>;
   playerIds: Set<string>;
   matches: MatchRecord[];
+  liveStats: LiveStatsReader;
+  /** Each match's live stats link, from a full pass or a member's feed read once in live mode. */
+  statsUrls: Map<string, string | null>;
+  /** Members whose feed live mode has read this run for those links. */
+  statsLookups: Set<string>;
   log: string[];
 };
 
@@ -262,19 +271,20 @@ async function syncMatches(ctx: Context): Promise<void> {
 
   const rows = bracket.matches.map((match) => {
     // Drop the in-memory helpers that have no column.
-    const row = { ...match };
+    const before = ctx.existing.get(match.id);
+    const row = keepAhead({ ...match }, before);
     delete row.cciw;
     delete row.round;
-    const before = ctx.existing.get(match.id);
+    delete row.stats_url;
     let finishedAt = before?.finished_at ?? null;
-    if (match.status === "final" && !finishedAt) {
+    if (row.status === "final" && !finishedAt) {
       // Seen going final just now, unless the result was posted long after
       // the game (or this is the first import): then estimate full time.
       const estimate = estimatedFinish(match.date);
       const recent = Date.now() < Date.parse(estimate) + 60 * 60_000;
       finishedAt = before && before.status !== "final" && recent ? now : estimate;
     }
-    if (match.status !== "final") finishedAt = null;
+    if (row.status !== "final") finishedAt = null;
     return { ...row, finished_at: finishedAt, updated_at: now };
   });
   await upsertInChunks(ctx.db, "matches", rows, "id");
@@ -618,8 +628,11 @@ async function syncRosters(ctx: Context): Promise<void> {
   }
 }
 
-/** Matches worth polling right now, read from what we have stored. */
-async function loadActive(ctx: Context, now = Date.now()): Promise<LiveRow[]> {
+/**
+ * Stored matches around now: the ones on (`active`), and whether one more comes
+ * on before `until`, so a run should wait for it rather than end.
+ */
+async function loadLive(ctx: Context, until: number, now = Date.now()): Promise<{ active: LiveRow[]; waiting: boolean }> {
   const rows = await must<LiveRow[]>(
     ctx.db
       .from("matches")
@@ -628,78 +641,90 @@ async function loadActive(ctx: Context, now = Date.now()): Promise<LiveRow[]> {
       .eq("season", SEASON)
       .eq("time_tbd", false)
       .gte("date", new Date(now - LIVE.tailMs).toISOString())
-      .lte("date", new Date(now + LIVE.leadMs).toISOString()),
+      .lte("date", new Date(Math.max(now, until) + LIVE.leadMs).toISOString()),
     "load active matches",
   );
-  return rows.filter((row) => isActive(row, now));
+  return {
+    active: rows.filter((row) => isActive(row, now)),
+    waiting: rows.some((row) => becomesActive(row, now, until)),
+  };
 }
 
 /**
- * One live poll. Reads only the schools playing in the active matches, then
- * writes only what changed on those matches and reads only their box scores.
- * Returns whether any school's feed answered.
+ * The live stats link of a match a member plays away at a non-member, whose
+ * folder we cannot know in advance. Taken from the last full pass, else from
+ * that member's scoreboard feed, read at most once per run.
+ */
+async function statsUrlOf(ctx: Context, row: LiveRow): Promise<string | null> {
+  if (row.home_slug && LIVESTATS.folders[row.home_slug]) return null;
+  if (ctx.statsUrls.has(row.id)) return ctx.statsUrls.get(row.id) ?? null;
+  const member = ctx.conference.find((team) => team.slug === row.away_slug);
+  if (member && !ctx.statsLookups.has(member.slug)) {
+    ctx.statsLookups.add(member.slug);
+    await refreshFeeds(ctx, [member]);
+    const { matches } = mergeGames(ctx.raws.get(member.slug) ?? [], new TeamResolver(ctx.teams), ctx.sport);
+    for (const match of matches) ctx.statsUrls.set(match.id, match.stats_url ?? null);
+  }
+  if (!ctx.statsUrls.has(row.id)) ctx.statsUrls.set(row.id, null);
+  return ctx.statsUrls.get(row.id) ?? null;
+}
+
+/**
+ * One live poll. Reads only the active matches' live stats feeds, then writes
+ * only what changed on those matches. Returns whether any feed answered, or
+ * true when none had a feed to read.
  */
 async function pollLive(ctx: Context, active: LiveRow[]): Promise<boolean> {
-  const playing = new Set(active.flatMap((row) => [row.home_slug, row.away_slug]));
-  const schools = ctx.conference.filter((team) => playing.has(team.slug));
-  await refreshFeeds(ctx, schools);
-  const answered = schools.filter((team) => !ctx.failedFeeds.has(team.slug));
-  if (answered.length === 0) return false;
-
-  const { matches } = mergeGames(
-    answered.flatMap((team) => ctx.raws.get(team.slug) ?? []),
-    new TeamResolver(ctx.teams),
-    ctx.sport,
-  );
-  const byId = new Map(matches.map((match) => [match.id, match]));
+  const resolver = new TeamResolver(ctx.teams);
+  const folders = new Map<string, string[]>();
+  for (const row of active) {
+    const stats_url = await statsUrlOf(ctx, row);
+    folders.set(row.id, await ctx.liveStats.foldersFor({ home_slug: row.home_slug, stats_url }));
+  }
+  const stats = await ctx.liveStats.read([...folders.values()].flat());
 
   const now = Date.now();
-  ctx.matches = [];
   for (const row of active) {
-    const record = byId.get(row.id);
-    if (!record) continue;
-    const patch = livePatch(row, record, now);
-    if (patch) {
-      await must(
-        ctx.db
-          .from("matches")
-          .update({ ...patch, updated_at: new Date(now).toISOString() })
-          .eq("id", row.id),
-        "live update",
-      );
-      const status = patch.status ?? row.status;
-      const home = patch.home_score ?? row.home_score;
-      const away = patch.away_score ?? row.away_score;
-      note(ctx, `live ${row.id}: ${status} ${home ?? "-"}-${away ?? "-"}`);
+    let record: LiveRow | null = null;
+    for (const folder of folders.get(row.id) ?? []) {
+      const feed = stats.get(folder);
+      record = feed ? applyLiveStats(row, feed, resolver) : null;
+      if (record) break;
     }
-    ctx.matches.push({
-      ...record,
-      status: patch?.status ?? row.status,
-      boxscore_url: record.boxscore_url ?? row.boxscore_url,
-    });
-    ctx.existing.set(row.id, {
-      id: row.id,
-      status: patch?.status ?? row.status,
-      finished_at: patch?.finished_at ?? row.finished_at,
-      events_scraped: row.events_scraped,
-      broadcast_url: ctx.existing.get(row.id)?.broadcast_url,
-    });
+    const patch = record && livePatch(row, record, now);
+    if (!patch) continue;
+    await must(
+      ctx.db
+        .from("matches")
+        .update({ ...patch, updated_at: new Date(now).toISOString() })
+        .eq("id", row.id),
+      "live update",
+    );
+    const status = patch.status ?? row.status;
+    const home = patch.home_score ?? row.home_score;
+    const away = patch.away_score ?? row.away_score;
+    note(ctx, `live ${row.id}: ${status} ${home ?? "-"}-${away ?? "-"}`);
   }
 
-  await syncBoxScores(ctx, 10, new Set(active.map((row) => row.id)), true);
-  return true;
+  return stats.size === 0 || [...stats.values()].some(Boolean);
 }
 
 /**
- * Polls each sport's active matches once a minute until none is left or the
- * run's time is up. `immediate` skips the first wait, for a run that has not
- * just read the feeds itself. Returns false only if no feed answered on any poll.
+ * Polls each sport's active matches once a minute until the run's time is up,
+ * or none is on and none is about to start. `immediate` skips the first wait,
+ * for a run that has not just read the feeds itself. Returns false only if no
+ * feed answered on any poll.
  */
 async function liveLoop(ctxs: Context[], startedAt: number, immediate: boolean): Promise<boolean> {
   const deadline = startedAt + LIVE.budgetMs;
   let polls = 0;
   let answered = false;
-  const announced = new Set<Sport>();
+  const announced = new Set<string>();
+
+  // A full pass just read the links; live mode need not look them up again.
+  for (const ctx of ctxs) {
+    for (const match of ctx.matches) ctx.statsUrls.set(match.id, match.stats_url ?? null);
+  }
 
   if (!immediate) {
     if (Date.now() + LIVE.pollMs >= deadline) return true;
@@ -707,18 +732,17 @@ async function liveLoop(ctxs: Context[], startedAt: number, immediate: boolean):
   }
   for (;;) {
     // A doubleheader has both sports on at once.
-    const actives = await Promise.all(ctxs.map((ctx) => loadActive(ctx)));
-    if (actives.every((active) => active.length === 0)) break;
+    const states = await Promise.all(ctxs.map((ctx) => loadLive(ctx, deadline)));
+    if (states.every((state) => state.active.length === 0 && !state.waiting)) break;
     for (const [index, ctx] of ctxs.entries()) {
-      const active = actives[index];
+      const { active } = states[index];
       if (active.length === 0) continue;
-      if (!announced.has(ctx.sport)) {
-        note(ctx, `live mode: ${active.map((row) => row.id).join(", ")}`);
-        announced.add(ctx.sport);
-      }
+      const fresh = active.filter((row) => !announced.has(row.id));
+      if (fresh.length) note(ctx, `live mode: ${fresh.map((row) => row.id).join(", ")}`);
+      fresh.forEach((row) => announced.add(row.id));
       if (await pollLive(ctx, active)) answered = true;
+      polls++;
     }
-    polls++;
     if (Date.now() + LIVE.pollMs >= deadline) break;
     await sleep(LIVE.pollMs);
   }
@@ -755,10 +779,10 @@ async function loadPlayerIds(ctx: Context): Promise<number> {
   return players.length;
 }
 
-/** Live mode on its own: exits within seconds when nothing is on. */
+/** Live mode on its own: exits within seconds when nothing is on or about to be. */
 async function runLiveOnly(db: SupabaseClient, ctxs: Context[], log: string[], startedAt: number): Promise<void> {
-  const actives = await Promise.all(ctxs.map((ctx) => loadActive(ctx)));
-  if (actives.every((active) => active.length === 0)) {
+  const states = await Promise.all(ctxs.map((ctx) => loadLive(ctx, startedAt + LIVE.budgetMs)));
+  if (states.every((state) => state.active.length === 0 && !state.waiting)) {
     console.log("no active matches");
     return;
   }
@@ -768,7 +792,6 @@ async function runLiveOnly(db: SupabaseClient, ctxs: Context[], log: string[], s
   );
   let ok = false;
   try {
-    for (const ctx of ctxs) await loadPlayerIds(ctx);
     ok = await liveLoop(ctxs, startedAt, true);
   } finally {
     log.push(`done in ${Math.round((Date.now() - startedAt) / 1000)}s, ${requestsMade()} requests`);
@@ -783,7 +806,7 @@ async function fullPass(ctx: Context): Promise<boolean> {
   const existing = await must<ExistingMatch[]>(
     ctx.db
       .from("matches")
-      .select("id, status, finished_at, events_scraped, broadcast_url")
+      .select("id, status, finished_at, events_scraped, broadcast_url, home_score, away_score")
       .eq("sport", ctx.sport)
       .eq("season", SEASON),
     "load matches",
@@ -823,7 +846,7 @@ async function main() {
     const teams = await loadTeams(db, sport);
     const conference = teams.filter((team) => team.is_conference && team.sidearm_base_url);
     if (conference.length === 0) throw new Error("No conference teams in the database. Run the migrations first.");
-    return {
+    const ctx: Context = {
       db,
       sport,
       teams,
@@ -833,8 +856,12 @@ async function main() {
       existing: new Map(),
       playerIds: new Set(),
       matches: [],
+      liveStats: new LiveStatsReader(sport, (message) => note(ctx, message)),
+      statsUrls: new Map(),
+      statsLookups: new Set(),
       log,
     };
+    return ctx;
   };
 
   const notDue = !options.dryRun && options.auto && !options.rosters && !(await needsFullPass(db));

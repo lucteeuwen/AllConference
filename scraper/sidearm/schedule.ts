@@ -19,7 +19,7 @@ export type SidearmGame = {
   is_conference: boolean;
   tournament: string | null;
   opponent: { id: number; name: string; image: string | null } | null;
-  media: { video: string | null } | null;
+  media: { video: string | null; stats?: string | null } | null;
   story: { url: string | null } | null;
   result: {
     status: string | null;
@@ -57,6 +57,8 @@ export type RawGame = {
   boxscoreUrl: string | null;
   recapUrl: string | null;
   videoUrl: string | null;
+  /** The game's live stats page, from the host's stat crew. */
+  statsUrl: string | null;
 };
 
 export function scoreboardUrl(baseUrl: string, sportId: number): string {
@@ -181,6 +183,7 @@ export function parseScoreboard(
       boxscoreUrl: absolute(sourceBaseUrl, game.result?.boxscore),
       recapUrl: absolute(sourceBaseUrl, game.story?.url),
       videoUrl: absolute(sourceBaseUrl, game.media?.video),
+      statsUrl: absolute(sourceBaseUrl, game.media?.stats),
     });
   }
 

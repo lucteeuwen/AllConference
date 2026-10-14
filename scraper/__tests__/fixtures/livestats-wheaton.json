@@ -1,0 +1,154 @@
+{
+  "Game": {
+    "Type": "SoccerGame",
+    "HasStarted": true,
+    "IsComplete": true,
+    "Source": "sidearm",
+    "Date": "10/10/2026",
+    "DateUTC": null,
+    "StartTime": "7:00 PM",
+    "EndTime": "2:08 AM",
+    "UseLiveStatsAutomation": "false",
+    "NcaaGameId": "396565",
+    "SidearmGameId": "",
+    "ClientId": "64",
+    "ClientAbbrev": "wheaton",
+    "ClientLiveStatsUrl": "https://athletics.wheaton.edu/sidearmstats/msoc",
+    "Notes": [],
+    "Location": "Joe Bean Stadium",
+    "GlobalSportShortname": "msoc",
+    "BannerMessage": "",
+    "StadiumImage": "https://sidearmstats.com/wheaton/msoc/stadiumimages/msoc090916-041.jpg",
+    "SiteImage": null,
+    "ClientHostname": "athletics.wheaton.edu",
+    "Officials": "Referee: Dimitrios Katsimingos",
+    "Attendance": 222,
+    "PeriodsRegulation": 2,
+    "Period": 2,
+    "ClockSeconds": 5400,
+    "Context": "",
+    "Rules": {
+      "PeriodMinutes": 45,
+      "PeriodName": "Half",
+      "OTMinutes": 10,
+      "ShowExtraPeriodsAsOT": true,
+      "ClockDirection": "Up",
+      "ClockSegmentation": "Continuous"
+    },
+    "HomeTeam": {
+      "Id": "WHE",
+      "Name": "Wheaton",
+      "Score": 1,
+      "CurrentRecord": "",
+      "PostgameRecord": "",
+      "NcaaSchoolCode": "778",
+      "Color": "#00407E",
+      "TextColor": "#FFFFFF",
+      "Logo": "https://sidearmstats.com/wheaton/msoc/logos/Wheaton.png",
+      "Url": "http://athletics.wheaton.edu",
+      "PeriodScores": [
+        0,
+        1
+      ],
+      "PeriodTimeouts": []
+    },
+    "VisitingTeam": {
+      "Id": "CAR",
+      "Name": "Carthage",
+      "Score": 0,
+      "CurrentRecord": "",
+      "PostgameRecord": "",
+      "NcaaSchoolCode": "121",
+      "Color": "#D71920",
+      "TextColor": "#FFFFFF",
+      "Logo": "https://sidearmstats.com/wheaton/msoc/logos/FB%20Sidearm%20Logo.png",
+      "Url": "http://athletics.carthage.edu",
+      "PeriodScores": [
+        0,
+        0
+      ],
+      "PeriodTimeouts": []
+    },
+    "LastPlays": [
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": null,
+        "Narrative": "Game end",
+        "Context": "",
+        "Id": "231+B2227031",
+        "Type": "GAME",
+        "Action": null,
+        "Period": 2,
+        "ClockSeconds": 5400,
+        "Coordinate": null,
+        "Qualifiers": [
+          "confirmed"
+        ],
+        "Score": null
+      },
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": null,
+        "Narrative": "Period end",
+        "Context": "",
+        "Id": "230+6E407517",
+        "Type": "PRD",
+        "Action": null,
+        "Period": 2,
+        "ClockSeconds": 5400,
+        "Coordinate": null,
+        "Qualifiers": [
+          "confirmed"
+        ],
+        "Score": null
+      },
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": "HomeTeam",
+        "Narrative": "Throw in by Wheaton (IL)",
+        "Context": "",
+        "Id": "229+11314F60",
+        "Type": "THROWIN",
+        "Action": null,
+        "Period": 2,
+        "ClockSeconds": 5394,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": "VisitingTeam",
+        "Narrative": "Throw in by Carthage",
+        "Context": "",
+        "Id": "228+BE92FADB",
+        "Type": "THROWIN",
+        "Action": null,
+        "Period": 2,
+        "ClockSeconds": 5377,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": "HomeTeam",
+        "Narrative": "Goal kick by Wheaton (IL)",
+        "Context": "",
+        "Id": "227+79E5D21B",
+        "Type": "GOALKICK",
+        "Action": null,
+        "Period": 2,
+        "ClockSeconds": 5347,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      }
+    ]
+  }
+}

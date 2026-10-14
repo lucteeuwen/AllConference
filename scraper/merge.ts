@@ -63,6 +63,8 @@ export type MatchRecord = {
   recap_url: string | null;
   source_school: string;
   source_game_id: number;
+  /** Not stored: the live stats page, read while the match is on. */
+  stats_url?: string | null;
   /** Not stored: CCIW tournament games still need a round and a slot. */
   cciw?: boolean;
   round?: RawRound | null;
@@ -269,6 +271,7 @@ export function mergeGames(raws: RawGame[], resolver: TeamResolver, sport: Sport
       video_url: primary.videoUrl ?? secondary?.videoUrl ?? null,
       boxscore_url: scored.boxscoreUrl ?? primary.boxscoreUrl ?? secondary?.boxscoreUrl ?? null,
       recap_url: primary.recapUrl ?? secondary?.recapUrl ?? null,
+      stats_url: primary.statsUrl ?? secondary?.statsUrl ?? null,
       source_school: primary.sourceSchool,
       source_game_id: primary.gameId,
       cciw: kind === "cciw" && bothConference,

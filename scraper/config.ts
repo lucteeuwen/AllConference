@@ -30,9 +30,10 @@ export const GLOBAL_INTERVAL_MS = 500;
 export const FULL_EVERY_MS = 20 * 60_000;
 
 /**
- * Live polling, only with `--live`. Off by default: SIDEARM does not update a
- * game while it is being played (a week of polls in October 2026 caught 2
- * changes, both the final whistle), so it was load on the schools for nothing.
+ * Live polling, with `--live`. It reads only the hosts' SIDEARM Stats feeds
+ * (one small request per match a minute on sidearmstats.com), never the
+ * schools' own sites: those don't update a game while it is played (a week of
+ * polling them in October 2026 caught 2 changes, both the final whistle).
  */
 export const LIVE = {
   /** A match is "active" from this long before kickoff… */
@@ -40,8 +41,11 @@ export const LIVE = {
   /** …until this long after kickoff, unless it goes final first. */
   tailMs: 150 * 60_000,
   pollMs: 60_000,
-  /** How long one run keeps polling. */
-  budgetMs: 9 * 60_000,
+  /**
+   * How long one run keeps polling. Just under the workflow's 30-minute tick,
+   * so back-to-back runs cover a whole match; the job's timeout sits above it.
+   */
+  budgetMs: 28 * 60_000,
 };
 
 /** What differs between the two sports on the sites the scraper reads. */
@@ -54,18 +58,42 @@ export const SPORT_SOURCES: Record<
     hudlSection: number;
     /** The United Soccer Coaches NCAA DIII poll. */
     pollUrl: string;
+    /** SIDEARM Stats' sport folder: `sidearmstats.com/<school>/<statsSport>/`. */
+    statsSport: string;
   }
 > = {
   men: {
     path: "mens-soccer",
     hudlSection: 103,
     pollUrl: "https://unitedsoccercoaches.org/rankings/college-rankings/ncaa-diii-men/",
+    statsSport: "msoc",
   },
   women: {
     path: "womens-soccer",
     hudlSection: 3772,
     pollUrl: "https://unitedsoccercoaches.org/rankings/college-rankings/ncaa-diii-women/",
+    statsSport: "wsoc",
   },
+};
+
+/**
+ * SIDEARM Stats live feeds (see ./sidearm/livestats). Each member's folder, the
+ * same for both sports, so its home games are read without first finding the
+ * folder on its stats page.
+ */
+export const LIVESTATS = {
+  base: "https://sidearmstats.com",
+  folders: {
+    augustana: "augustana",
+    carroll: "carrollu",
+    carthage: "carthage",
+    elmhurst: "elmhurst",
+    "illinois-wesleyan": "iwu",
+    millikin: "millikin",
+    "north-central": "ncc",
+    "north-park": "nparku",
+    wheaton: "wheaton",
+  } as Record<string, string>,
 };
 
 /**
