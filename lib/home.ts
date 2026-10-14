@@ -2,11 +2,13 @@ import { getSeasonData, withDetails } from "@/lib/season-data";
 import { pickHeroMatch } from "@/lib/hero";
 import { SCHEDULED_END_MS } from "@/lib/live";
 import { getTopScorers, standingsLines, type ScorerLine, type StandingsLine } from "@/lib/selectors";
+import type { Sport } from "@/lib/sport";
 import type { Match } from "@/lib/types";
 
 export type { StandingsLine };
 
 export type HomeData = {
+  sport: Sport;
   /** Only set from 15 minutes before a kickoff until 15 minutes after full time. */
   hero: Match | null;
   /** Server clock at render, so the browser's first paint agrees with it. */
@@ -20,9 +22,9 @@ export type HomeData = {
 };
 
 /** `at` overrides the clock for previews; defaults to now. */
-export async function getHomeData(at?: number): Promise<HomeData> {
+export async function getHomeData(sport: Sport, at?: number): Promise<HomeData> {
   const now = at ?? Date.now();
-  const data = await getSeasonData();
+  const data = await getSeasonData(sport);
   const all = data.matches;
 
   // An instant, not a day key: this page is cached for every reader at once,
@@ -35,6 +37,7 @@ export async function getHomeData(at?: number): Promise<HomeData> {
   const hero = pickHeroMatch(all, now);
 
   return {
+    sport,
     hero: hero ? await withDetails(hero) : null,
     renderedAt: now,
     matches: all,

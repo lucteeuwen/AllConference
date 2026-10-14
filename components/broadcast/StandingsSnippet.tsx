@@ -8,6 +8,7 @@ import { playerHref } from "@/lib/players";
 import { played, type ScorerStat } from "@/lib/selectors";
 import { pointsFor, recordFor } from "@/lib/standings";
 import type { HomeData } from "@/lib/home";
+import { teamHref, type Sport } from "@/lib/sport";
 
 /**
  * The home page's compact standings. Its numbers come from the same `recordFor`
@@ -15,10 +16,12 @@ import type { HomeData } from "@/lib/home";
  * first conference match, the conference record after.
  */
 export function StandingsSnippet({
+  sport,
   standings,
   conferenceStarted,
   limit = 6,
 }: {
+  sport: Sport;
   standings: HomeData["standings"];
   conferenceStarted: boolean;
   limit?: number;
@@ -30,7 +33,7 @@ export function StandingsSnippet({
         return (
           <Link
             key={line.team.slug}
-            href={`/teams/${line.team.slug}`}
+            href={teamHref(sport, line.team.slug)}
             className="bc-row flex items-center gap-3 border-b border-line px-4 transition last:border-0 hover:bg-ground"
           >
             <span className="w-4 text-[0.75rem] font-black text-ink-faint tabular-nums">

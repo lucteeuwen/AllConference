@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { BroadcastHome } from "@/components/broadcast/BroadcastHome";
 import { getHomeData } from "@/lib/home";
+import { parseSport, SPORT_LABEL } from "@/lib/sport";
 
-export const metadata: Metadata = {
-  title: "CCIW Men's Soccer",
-};
+export async function generateMetadata(props: PageProps<"/[sport]">): Promise<Metadata> {
+  // Absolute: the layout's template would say the sport twice.
+  return { title: { absolute: `CCIW ${SPORT_LABEL[parseSport((await props.params).sport)]}` } };
+}
 
 /**
  * Rebuilt at most every 30 seconds. The match box is timed against the clock at
@@ -12,8 +14,9 @@ export const metadata: Metadata = {
  */
 export const revalidate = 30;
 
-export default async function HomePage(props: PageProps<"/">) {
-  // Development only: `/?now=2026-10-03T20:20:00Z` previews the match box at
+export default async function HomePage(props: PageProps<"/[sport]">) {
+  const sport = parseSport((await props.params).sport);
+  // Development only: `/men?now=2026-10-03T20:20:00Z` previews the match box at
   // another moment. Production never reads the query, so the page stays cached.
   let now: number | undefined;
   if (process.env.NODE_ENV !== "production") {
@@ -22,5 +25,5 @@ export default async function HomePage(props: PageProps<"/">) {
     if (!Number.isNaN(parsed)) now = parsed;
   }
 
-  return <BroadcastHome data={await getHomeData(now)} />;
+  return <BroadcastHome data={await getHomeData(sport, now)} />;
 }

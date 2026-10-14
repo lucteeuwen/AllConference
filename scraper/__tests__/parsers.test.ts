@@ -49,11 +49,11 @@ const conference: TeamRow[] = [
 ];
 
 const slots: SlotRow[] = [
-  { season: 2026, slot: "qf1", round: "quarterfinal", home_seed: 3, away_seed: 6, home_from: null, away_from: null, match_id: null },
-  { season: 2026, slot: "qf2", round: "quarterfinal", home_seed: 4, away_seed: 5, home_from: null, away_from: null, match_id: null },
-  { season: 2026, slot: "sf1", round: "semifinal", home_seed: 1, away_seed: null, home_from: null, away_from: "qf2", match_id: null },
-  { season: 2026, slot: "sf2", round: "semifinal", home_seed: 2, away_seed: null, home_from: null, away_from: "qf1", match_id: null },
-  { season: 2026, slot: "final", round: "final", home_seed: null, away_seed: null, home_from: "sf1", away_from: "sf2", match_id: null },
+  { sport: "men" as const, season: 2026, slot: "qf1", round: "quarterfinal", home_seed: 3, away_seed: 6, home_from: null, away_from: null, match_id: null },
+  { sport: "men" as const, season: 2026, slot: "qf2", round: "quarterfinal", home_seed: 4, away_seed: 5, home_from: null, away_from: null, match_id: null },
+  { sport: "men" as const, season: 2026, slot: "sf1", round: "semifinal", home_seed: 1, away_seed: null, home_from: null, away_from: "qf2", match_id: null },
+  { sport: "men" as const, season: 2026, slot: "sf2", round: "semifinal", home_seed: 2, away_seed: null, home_from: null, away_from: "qf1", match_id: null },
+  { sport: "men" as const, season: 2026, slot: "final", round: "final", home_seed: null, away_seed: null, home_from: "sf1", away_from: "sf2", match_id: null },
 ];
 
 describe("normalize", () => {
@@ -113,6 +113,45 @@ describe("scoreboard feed", () => {
     expect(tba?.date).toBe("2026-10-31T17:00:00.000Z");
   });
 
+  it("reads the women's feeds' looser tournament placeholders", () => {
+    const game = (id: number, opponent: string, tournament: string | null): SidearmGame => ({
+      id,
+      date: "2026-10-31T00:00:00",
+      date_utc: null,
+      tbd: true,
+      status: "A",
+      location_indicator: "A",
+      location: null,
+      is_conference: false,
+      tournament,
+      opponent: { id, name: opponent, image: null },
+      media: null,
+      story: null,
+      result: null,
+    });
+    const games = parseScoreboard(
+      [
+        game(1, "Quarterfinals", "CCIW Tournament"),
+        game(2, "CCIW Tournament First Round", null),
+        game(3, "Semifinals", "CCIW Tournament"),
+        game(4, "CCIW Tournament Championship", "College Conference of Illinois and Wisconsin Tournament  I"),
+        game(5, "Finals", "CCIW Tournament"),
+        // No round, no opponent: nothing to place.
+        game(6, "CCIW Tournament", "CCIW Tournament"),
+      ],
+      "augustana",
+      "https://augustana.example",
+      "2026-07-01",
+    );
+    expect(games.map((entry) => [entry.gameId, entry.placeholderRound])).toEqual([
+      [1, "quarterfinal"],
+      [2, "quarterfinal"],
+      [3, "semifinal"],
+      [4, "final"],
+      [5, "final"],
+    ]);
+  });
+
   it("drops other teams' games at a hosted tournament", () => {
     expect(feed("wheaton").some((game) => / vs\.? /i.test(game.opponentName))).toBe(false);
   });
@@ -124,6 +163,15 @@ describe("scoreboard feed", () => {
 
 describe("merge", () => {
   const resolver = () => new TeamResolver(structuredClone(conference));
+
+  it("prefixes women's ids, so a doubleheader does not collide with the men's game", () => {
+    const raws = [...feed("augustana"), ...feed("carroll")];
+    const men = mergeGames(raws, resolver()).matches;
+    const women = mergeGames(raws, resolver(), "women").matches;
+    expect(women.map((match) => match.id)).toEqual(men.map((match) => `w-${match.id}`));
+    expect(women.every((match) => match.sport === "women")).toBe(true);
+    expect(men.every((match) => match.sport === "men")).toBe(true);
+  });
 
   it("collapses both schools' views of a conference game", () => {
     const { matches } = mergeGames([...feed("augustana"), ...feed("carroll")], resolver());
@@ -189,7 +237,7 @@ describe("bracket", () => {
   it("slots real games in and advances winners", () => {
     const seeds = { 1: "wheaton", 2: "illinois-wesleyan", 3: "north-central", 4: "north-park", 5: "carroll", 6: "carthage" };
     const base = {
-      season: 2026, home_placeholder: null, away_placeholder: null, home_pens: null, away_pens: null,
+      sport: "men" as const, season: 2026, home_placeholder: null, away_placeholder: null, home_pens: null, away_pens: null,
       venue: "", timezone: null, time_tbd: false, is_conference: false,
       stage: "regular" as const, bracket_slot: null, video_url: null,
       boxscore_url: null, recap_url: null, source_game_id: 1, cciw: true,

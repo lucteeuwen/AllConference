@@ -87,6 +87,15 @@ describe("titleVerdict", () => {
     expect(verdict("Wheaton vs Knox Womens Soccer", "wheaton", "knox")).toBe("mismatch");
   });
 
+  it("for a women's game, rejects the men's and accepts its own", () => {
+    const women = (title: string, ...playing: string[]) => titleVerdict(title, playing, teams, "women");
+    expect(women("Illinois Wesleyan vs Knox- Women's Soccer", "illinois-wesleyan", "knox")).toBe("match");
+    expect(women("Illinois Wesleyan vs Knox- Men's Soccer", "illinois-wesleyan", "knox")).toBe("mismatch");
+    expect(women("Wheaton vs Knox Men\u2019s Soccer", "wheaton", "knox")).toBe("mismatch");
+    // A title that leaves the sport out says nothing either way.
+    expect(women("Wheaton vs Knox", "wheaton", "knox")).toBe("match");
+  });
+
   it("can't confirm a title that names nobody", () => {
     expect(verdict("Live Stream", "wheaton", "knox")).toBe("unknown");
     expect(verdict("Semifinals live", "wheaton", "knox")).toBe("unknown");

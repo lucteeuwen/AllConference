@@ -1,5 +1,6 @@
+import { DEFAULT_SPORT, saysOtherSport, type Sport } from "@/lib/sport";
 import { classifyVideo, isStandIn, titleVerdict, type NamedTeam } from "@/lib/video";
-import { BROADCASTS, USER_AGENT } from "./config";
+import { BROADCASTS, SPORT_SOURCES, USER_AGENT } from "./config";
 import { cciwSites, embeddedBroadcast, fetchBroadcasts, hudlSiteOf, pickBroadcast, type HudlSite } from "./broadcasts";
 import type { MatchRecord } from "./merge";
 import { pickVideo, videoStillFits, youtubeChannelOf, youtubeVideoId, YouTube, type Video } from "./youtube";
@@ -85,13 +86,16 @@ export type ResolveOptions = {
   teams: NamedTeam[];
   log: (message: string) => void;
   youtube?: YouTube | null;
+  /** Which sport these games are; men's when not set. */
+  sport?: Sport;
 };
 
 export async function resolveWatchLinks(matches: Match[], options: ResolveOptions): Promise<Map<string, WatchResult>> {
   const { teams, log } = options;
+  const sport = options.sport ?? DEFAULT_SPORT;
   const youtube = options.youtube === undefined ? (YouTube.available() ? new YouTube() : null) : options.youtube;
 
-  const { broadcasts, failed } = await fetchBroadcasts([...cciwSites(), ...linkedSites(matches)]);
+  const { broadcasts, failed } = await fetchBroadcasts([...cciwSites(), ...linkedSites(matches)], SPORT_SOURCES[sport].hudlSection);
   if (failed.size) log(`WARN Hudl sites unreadable, keeping their games' links: ${[...failed].join(", ")}`);
   // An empty list means the API changed, not that every game lost its broadcast.
   const hudlDown = broadcasts.length === 0;
@@ -125,7 +129,7 @@ export async function resolveWatchLinks(matches: Match[], options: ResolveOption
     }
     const playing = [match.home_slug, match.away_slug];
 
-    const hudl = pickBroadcast(match, broadcasts, teams);
+    const hudl = pickBroadcast(match, broadcasts, teams, sport);
     if (hudl.candidates > 1) log(`${match.id}: ${hudl.candidates} Hudl broadcasts fit, using ${hudl.url}`);
     if (hudl.url) return { url: hudl.url, source: "hudl", settled: true, reason: "Hudl broadcast" };
     const hudlSettled = !hudlDown && !sitesOf(match).some((site) => failed.has(site));
@@ -146,7 +150,7 @@ export async function resolveWatchLinks(matches: Match[], options: ResolveOption
       if (!youtube) return { url: null, settled: false, reason: "YouTube channel, no API key" };
       try {
         const videos = await youtube.channelVideos(channel);
-        const pick = pickVideo(match, videos, teams, match.home_slug);
+        const pick = pickVideo(match, videos, teams, match.home_slug, sport);
         if (pick.candidates > 1) log(`${match.id}: ${pick.candidates} YouTube videos fit, using ${pick.url}`);
         if (pick.url) return { url: pick.url, source: "youtube", settled: true, reason: "stream on the school's channel" };
         return { url: null, settled: hudlSettled, reason: "no video of this game on the channel" };
@@ -164,7 +168,7 @@ export async function resolveWatchLinks(matches: Match[], options: ResolveOption
       try {
         const broadcast = await embeddedBroadcast(video.broadcastId);
         const pick = broadcast
-          ? pickBroadcast(match, [{ ...broadcast, id: video.broadcastId, site: "", date_modified: null }], teams)
+          ? pickBroadcast(match, [{ ...broadcast, id: video.broadcastId, site: "", date_modified: null }], teams, sport)
           : null;
         if (pick?.url) return { url: video.url, source: "school", settled: true, reason: `school's Hudl link (${broadcast?.title})` };
         return {
@@ -181,7 +185,7 @@ export async function resolveWatchLinks(matches: Match[], options: ResolveOption
     if (video.provider === "youtube") {
       if (!direct) return { url: video.url, source: "school", settled: true, reason: "school's YouTube video (unchecked)" };
       const found = direct.get(youtubeVideoId(video.url) ?? "");
-      return videoStillFits(found, playing, teams)
+      return videoStillFits(found, playing, teams, sport)
         ? { url: video.url, source: "school", settled: true, reason: "school's YouTube video" }
         : { url: null, settled: true, reason: "school's YouTube video is gone or another game" };
     }
@@ -189,10 +193,10 @@ export async function resolveWatchLinks(matches: Match[], options: ResolveOption
     if (video.provider === "flo") {
       try {
         const page = await floPage(video.url);
-        if (/womens?\b/i.test(decodeURIComponent(page.url))) {
-          return { url: null, settled: true, reason: "FloCollege link is a women's game" };
+        if (saysOtherSport(decodeURIComponent(page.url), sport)) {
+          return { url: null, settled: true, reason: "FloCollege link is the other sport's game" };
         }
-        if (page.title && titleVerdict(page.title, playing, teams) === "mismatch") {
+        if (page.title && titleVerdict(page.title, playing, teams, sport) === "mismatch") {
           return { url: null, settled: true, reason: `FloCollege link is another game (${page.title})` };
         }
         return { url: page.url, source: "flo", settled: true, reason: "FloCollege event" };

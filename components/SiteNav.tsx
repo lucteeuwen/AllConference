@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
+import { useEffect, type ReactNode } from "react";
 import { LogoTile } from "@/components/Logo";
+import { SlidingSegments } from "@/components/SlidingSegments";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import type { ReactNode } from "react";
+import { isSport, SPORT_COOKIE, SPORT_SHORT, SPORTS, sportHref, switchSportHref, type Sport } from "@/lib/sport";
+import { useSport } from "@/lib/use-sport";
 
 type NavItem = {
   href: string;
@@ -68,33 +71,57 @@ const items: NavItem[] = [
   },
 ];
 
-function isActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/";
-  return pathname === href || pathname.startsWith(`${href}/`);
+/** `href` is the section without its sport ("/matches"), `pathname` the full path. */
+function isActive(pathname: string, sport: Sport, href: string): boolean {
+  const full = sportHref(sport, href);
+  if (href === "/") return pathname === full;
+  return pathname === full || pathname.startsWith(`${full}/`);
 }
 
-/** Bottom tab bar on phones, a top bar from the medium breakpoint up. */
+/** Men | Women. Keeps the visitor in the same section on the other side. */
+function SportSwitch({ pathname, sport }: { pathname: string; sport: Sport }) {
+  return (
+    <SlidingSegments
+      label="Sport"
+      value={sport}
+      options={SPORTS.map((value) => ({ value, label: SPORT_SHORT[value], href: switchSportHref(pathname, value) }))}
+      itemClassName="px-3"
+    />
+  );
+}
+
+/**
+ * Bottom tab bar on phones with the sport switch above the page, a top bar
+ * from the medium breakpoint up.
+ */
 export function SiteNav() {
   const pathname = usePathname();
+  const sport = useSport();
+  const shownSport = useParams<{ sport?: string }>()?.sport;
+
+  // `/` sends a returning visitor to the side they used last (see proxy.ts).
+  useEffect(() => {
+    if (!isSport(shownSport)) return;
+    document.cookie = `${SPORT_COOKIE}=${shownSport}; path=/; max-age=31536000; samesite=lax`;
+  }, [shownSport]);
 
   return (
     <>
       <header className="bc-sticky sticky top-0 z-40 hidden border-b border-line bg-navy md:block">
         <div className="mx-auto flex h-16 items-center gap-8 px-6" style={{ maxWidth: "var(--page-max)" }}>
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href={sportHref(sport, "/")} className="flex items-center gap-2.5">
             <LogoTile className="size-9" />
-            <span className="text-[15px] font-bold tracking-tight text-white">
-              CCIW Men&apos;s Soccer
-            </span>
+            <span className="text-[15px] font-bold tracking-tight text-white">CCIW Soccer</span>
           </Link>
+          <SportSwitch pathname={pathname} sport={sport} />
           <nav className="flex items-center gap-1">
             {items.map((item) => (
               <Link
                 key={item.href}
-                href={item.href}
-                aria-current={isActive(pathname, item.href) ? "page" : undefined}
+                href={sportHref(sport, item.href)}
+                aria-current={isActive(pathname, sport, item.href) ? "page" : undefined}
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  isActive(pathname, item.href)
+                  isActive(pathname, sport, item.href)
                     ? "bg-white/12 text-white"
                     : "text-white/60 hover:bg-white/8 hover:text-white"
                 }`}
@@ -107,17 +134,21 @@ export function SiteNav() {
         </div>
       </header>
 
+      <div className="flex justify-center px-4 pt-3 md:hidden">
+        <SportSwitch pathname={pathname} sport={sport} />
+      </div>
+
       <nav
         aria-label="Primary"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
         <ul className="flex">
           {items.map((item) => {
-            const active = isActive(pathname, item.href);
+            const active = isActive(pathname, sport, item.href);
             return (
               <li key={item.href} className="flex-1">
                 <Link
-                  href={item.href}
+                  href={sportHref(sport, item.href)}
                   aria-current={active ? "page" : undefined}
                   className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition ${
                     active ? "text-accent" : "text-ink-faint"

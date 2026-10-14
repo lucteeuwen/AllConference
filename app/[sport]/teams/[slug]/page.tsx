@@ -27,13 +27,14 @@ import {
   matchesForTeam,
   standingsLines,
 } from "@/lib/selectors";
+import { parseSport, sportHref, teamHref } from "@/lib/sport";
 import type { Player } from "@/lib/types";
 
-type Props = PageProps<"/teams/[slug]">;
+type Props = PageProps<"/[sport]/teams/[slug]">;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  const team = getTeam(await getSeasonData(), slug);
+  const { sport, slug } = await params;
+  const team = getTeam(await getSeasonData(parseSport(sport)), slug);
   return { title: team ? team.fullName : "Team not found" };
 }
 
@@ -60,8 +61,9 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 export default async function TeamPage({ params, searchParams }: Props) {
-  const { slug } = await params;
-  const data = await getSeasonData();
+  const { slug, sport: sportParam } = await params;
+  const sport = parseSport(sportParam);
+  const data = await getSeasonData(sport);
   const team = getTeam(data, slug);
   if (!team || !team.isConference) notFound();
 
@@ -80,10 +82,10 @@ export default async function TeamPage({ params, searchParams }: Props) {
   const fixtures = matchesForTeam(data, slug);
   const { tiles, centerIndex } = buildRailTiles(fixtures, standings, 14);
 
-  const base = `/teams/${slug}?tab=matches`;
+  const base = teamHref(sport, slug, "?tab=matches");
 
   const tabs = [
-    { key: "roster", label: `Roster (${roster.length})`, href: `/teams/${slug}?tab=roster` },
+    { key: "roster", label: `Roster (${roster.length})`, href: teamHref(sport, slug, "?tab=roster") },
     { key: "matches", label: `Matches (${fixtures.length})`, href: base },
   ];
 
@@ -92,7 +94,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
       <section>
         <WashHero home={team}>
           <div className="mb-5 flex items-center justify-between">
-            <BackButton fallbackHref="/teams" label="Back">
+            <BackButton fallbackHref={sportHref(sport, "/teams")} label="Back">
               <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

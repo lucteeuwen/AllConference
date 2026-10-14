@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { filtersToQuery, type MatchFilters } from "@/lib/filters";
 import { formatChipLabel } from "@/lib/format";
+import { sportHref } from "@/lib/sport";
+import { useSport } from "@/lib/use-sport";
 
 export type DayCount = {
   key: string;
@@ -33,10 +35,11 @@ const GAP_PX = 8;
  * keeps its inset, and it fades into the chips beside it.
  */
 export function DateStrip({ days, filters, allHref, activeDay, today }: Props) {
+  const sport = useSport();
   const chips = days.map((day) => ({
     ...day,
     ...formatChipLabel(day.key, today),
-    href: `/matches${filtersToQuery({ ...filters, day: day.key })}`,
+    href: sportHref(sport, `/matches${filtersToQuery({ ...filters, day: day.key })}`),
     isToday: day.key === today,
   }));
   const railRef = useRef<HTMLDivElement>(null);

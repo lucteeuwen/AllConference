@@ -2,10 +2,10 @@ import * as cheerio from "cheerio";
 import { cleanText } from "./normalize";
 
 /**
- * The United Soccer Coaches NCAA DIII men's poll. The page holds every poll of
- * the season as a table each, newest first; only the first is current.
+ * A United Soccer Coaches NCAA DIII poll (see SPORT_SOURCES). The page holds
+ * every poll of the season as a table each, newest first; only the first is
+ * current.
  */
-export const POLL_URL = "https://unitedsoccercoaches.org/?p=12373";
 
 export type PollEntry = { rank: number; school: string };
 

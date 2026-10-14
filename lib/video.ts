@@ -1,4 +1,5 @@
 import type { MatchVideo, Team } from "@/lib/types";
+import { DEFAULT_SPORT, saysOtherSport, type Sport } from "@/lib/sport";
 
 /**
  * Turns the free-form "video" link a school puts on a game into something the
@@ -207,12 +208,17 @@ function titleMentions(title: string, teams: NamedTeam[]): Set<string>[] {
 }
 
 /**
- * Does a broadcast title read like this game? "mismatch" for a women's game or
- * a title that names a team that isn't playing; "unknown" when it names no team
- * we know (nothing to confirm it by).
+ * Does a broadcast title read like this game? "mismatch" for the other sport's
+ * game or a title that names a team that isn't playing; "unknown" when it names
+ * no team we know (nothing to confirm it by).
  */
-export function titleVerdict(title: string, playing: string[], teams: NamedTeam[]): TitleVerdict {
-  if (/\bwomen'?s?\b|\bwomens\b/i.test(title.replace(/&#0?39;/g, "'"))) return "mismatch";
+export function titleVerdict(
+  title: string,
+  playing: string[],
+  teams: NamedTeam[],
+  sport: Sport = DEFAULT_SPORT,
+): TitleVerdict {
+  if (saysOtherSport(title, sport)) return "mismatch";
 
   const own = ownSlugs(playing);
   const mentions = titleMentions(title, teams);
@@ -227,8 +233,14 @@ export function titleVerdict(title: string, playing: string[], teams: NamedTeam[
  * of the school's others. `implied` is a side the title may leave out because
  * the page it is on already says whose it is.
  */
-export function titleNamesBoth(title: string, playing: string[], teams: NamedTeam[], implied?: string): boolean {
-  if (titleVerdict(title, playing, teams) === "mismatch") return false;
+export function titleNamesBoth(
+  title: string,
+  playing: string[],
+  teams: NamedTeam[],
+  implied?: string,
+  sport: Sport = DEFAULT_SPORT,
+): boolean {
+  if (titleVerdict(title, playing, teams, sport) === "mismatch") return false;
   const mentions = titleMentions(title, teams);
   return playing.every((slug) => {
     if (slug === implied) return true;

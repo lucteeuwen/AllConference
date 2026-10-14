@@ -6,6 +6,7 @@ import { FormDots } from "@/components/FormDots";
 import { SEASON_LABEL } from "@/lib/season";
 import { getSeasonData } from "@/lib/season-data";
 import { computeStandings, played } from "@/lib/selectors";
+import { parseSport, teamHref } from "@/lib/sport";
 
 export const metadata: Metadata = {
   title: "Teams",
@@ -13,8 +14,9 @@ export const metadata: Metadata = {
 
 export const revalidate = 60;
 
-export default async function TeamsPage() {
-  const data = await getSeasonData();
+export default async function TeamsPage(props: PageProps<"/[sport]/teams">) {
+  const sport = parseSport((await props.params).sport);
+  const data = await getSeasonData(sport);
   const records = new Map(computeStandings(data).map((row) => [row.teamSlug, row]));
   const teams = data.conference;
 
@@ -36,7 +38,7 @@ export default async function TeamsPage() {
           return (
             <Link
               key={team.slug}
-              href={`/teams/${team.slug}`}
+              href={teamHref(sport, team.slug)}
               style={{ animationDelay: `${index * 45}ms` }}
               className="bc-card rise-in group relative overflow-hidden transition hover:border-accent/50"
             >
