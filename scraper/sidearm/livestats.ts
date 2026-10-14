@@ -100,11 +100,9 @@ function dayDiff(a: string, b: string): number {
  * off the conference's for a late kickoff out west, so one day either way is
  * allowed; the two teams must be the match's two teams.
  */
-export function applyLiveStats(
-  record: MatchRecord,
-  stats: LiveStats,
-  resolver: TeamResolver,
-): MatchRecord | null {
+export function applyLiveStats<
+  T extends Pick<MatchRecord, "date" | "status" | "home_slug" | "away_slug" | "home_score" | "away_score">,
+>(record: T, stats: LiveStats, resolver: TeamResolver): T | null {
   if (dayDiff(stats.day, centralDay(record.date)) > 1) return null;
 
   const feedHome = resolver.resolve(stats.homeName, null);
@@ -140,7 +138,7 @@ export class LiveStatsReader {
   ) {}
 
   /** Folders worth trying for a match: a member host's own, else the game's stats link. */
-  async foldersFor(record: MatchRecord): Promise<string[]> {
+  async foldersFor(record: Pick<MatchRecord, "home_slug" | "stats_url">): Promise<string[]> {
     const known = record.home_slug ? LIVESTATS.folders[record.home_slug] : undefined;
     if (known) return [known];
     const linked = await this.folderOf(record.stats_url);

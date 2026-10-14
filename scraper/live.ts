@@ -3,9 +3,10 @@ import { LIVE } from "./config";
 import type { MatchRecord } from "./merge";
 
 /**
- * The narrow half of the scraper. While a match is on we only re-read the
- * schools playing in it and only write the columns a game changes: never the
- * whole season, the bracket, logos or rosters.
+ * The narrow half of the scraper. While a match is on we only read the host's
+ * SIDEARM Stats feed (see ./sidearm/livestats) and only write the columns a
+ * game changes: never the schools' own sites, the bracket, logos or rosters.
+ * Box scores wait for the next full pass.
  */
 
 export type LiveRow = {
@@ -35,15 +36,19 @@ export function estimatedFinish(date: string): string {
 }
 
 /**
- * A match is worth polling from shortly before kickoff until it has had time to
- * finish, and a finished one until its box score has been read (if it has one).
+ * A match is worth polling from shortly before kickoff until it goes final or
+ * has had time to finish.
  */
 export function isActive(row: LiveRow, now = Date.now()): boolean {
-  if (row.time_tbd || row.status === "postponed" || row.status === "canceled") return false;
+  if (row.time_tbd || (row.status !== "scheduled" && row.status !== "live")) return false;
   const kickoff = Date.parse(row.date);
-  if (now < kickoff - LIVE.leadMs || now > kickoff + LIVE.tailMs) return false;
-  if (row.status === "final") return Boolean(row.boxscore_url) && !row.events_scraped;
-  return true;
+  return now >= kickoff - LIVE.leadMs && now <= kickoff + LIVE.tailMs;
+}
+
+/** True when a match not yet active will be by `until`, so a run should wait for it. */
+export function becomesActive(row: LiveRow, now: number, until: number): boolean {
+  const from = Date.parse(row.date) - LIVE.leadMs;
+  return from > now && from <= until && isActive(row, from);
 }
 
 const RANK: Partial<Record<MatchStatus, number>> = { scheduled: 0, live: 1, final: 2 };
@@ -81,7 +86,11 @@ export function keepAhead<T extends Pick<MatchRecord, "status" | "home_score" | 
  * changed. A feed that briefly looks behind what we stored (a school's page
  * reverting, a score field going blank) never rolls the match back.
  */
-export function livePatch(row: LiveRow, record: MatchRecord, now = Date.now()): Partial<LiveRow> | null {
+export function livePatch(
+  row: LiveRow,
+  record: Pick<MatchRecord, "status" | "home_score" | "away_score" | "home_pens" | "away_pens" | "boxscore_url" | "video_url">,
+  now = Date.now(),
+): Partial<LiveRow> | null {
   const patch: Partial<LiveRow> = {};
 
   const from = RANK[row.status];

@@ -86,15 +86,16 @@ npm run dev
 | Command | What it does |
 | --- | --- |
 | `npm run scrape` | One full scrape pass, men's then women's |
-| `npm run scrape -- --auto` | What the workflow runs every 30 min: a full pass if the last is over 20 min old, else nothing |
-| `npm run scrape -- --live` | Also polls a match that is on every minute for up to 9 min. Off by default: SIDEARM doesn't update a game while it's played |
-| `npm run scrape -- --live-only` | Live mode alone; exits within seconds when nothing is on |
+| `npm run scrape -- --auto` | A full pass if the last is over 20 min old, else nothing |
+| `npm run scrape -- --auto --live` | What the workflow runs every 30 min: the above, then live mode while a match is on |
+| `npm run scrape -- --live` | Also polls a match that is on every minute, for up to 28 min, from the host's SIDEARM Stats feed |
+| `npm run scrape -- --live-only` | Live mode alone; exits within seconds when nothing is on or about to be |
 | `npm run scrape -- --rosters` | Also refreshes rosters and season stats |
 | `npm run scrape -- --dry-run [--json]` | Reads the feeds and prints what would be written |
 | `npm test` | Parser tests against saved SIDEARM pages in `scraper/__tests__/fixtures` |
 | `npm run db:push` | Applies new migrations to the linked Supabase project |
 
-`.github/workflows/scrape.yml` runs the scraper with `--auto` every 30 minutes
+`.github/workflows/scrape.yml` runs the scraper with `--auto --live` every 30 minutes
 from August to November, and with `--rosters` once a day. It needs the
 repository secrets `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
 
@@ -106,15 +107,20 @@ with `{"ref":"main","inputs":{"auto":"true"}}` and a repo-scoped PAT
 (`Actions: Read and write`). The native `schedule:` entries stay in the
 workflow as a harmless backstop.
 
-**Live mode** (only with `--live`; off since October 2026, because SIDEARM
-doesn't update a game while it's played) covers a match from 15 minutes before kickoff until its box score
-is read, or 150 minutes after kickoff. Each minute it re-reads only the feeds of
-the schools in that match and its box score, and writes only the columns a game
-changes (status, score, `finished_at`, `started_at`); the season, bracket, logos
-and rosters are left to the full pass. Schools update their scoreboard feeds
-only after the game, so live mode also reads the host's SIDEARM Stats feed
-(`sidearmstats.com/<folder>/<msoc|wsoc>/game.json`), which the stat crew updates as the
-game is played. That feed is used only when its day and teams match the match.
+**Live mode** (with `--live`) covers a match from 15 minutes before kickoff until
+it goes final, or 150 minutes after kickoff. Schools update their own SIDEARM
+sites only after the game (a week of polling them in October 2026 caught two
+changes, both the final whistle), so live mode never reads them. Each minute it
+reads only the host's SIDEARM Stats feed
+(`sidearmstats.com/<folder>/<msoc|wsoc>/game.json`), which the stat crew updates
+as the game is played, and writes only the columns a game changes (status,
+score, `finished_at`, `started_at`). The feed is used only when its day and teams
+match the match. A run polls for up to 28 minutes, and waits for a match that is
+about to start, so the 30-minute runs cover a whole game; box scores and
+everything else are left to the full pass, which never rolls a match back to an
+earlier status or score than live mode stored. For a member's away game at a
+non-CCIW school, the feed's address comes from that member's schedule feed, read
+once per run.
 The site does not wait for the scraper to
 show a match as live: from kickoff it counts the minute up itself, and once a
 match should be over it shows "Full time" until the final score arrives.

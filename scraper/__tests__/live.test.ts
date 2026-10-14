@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isActive, keepAhead, livePatch, type LiveRow } from "../live";
+import { becomesActive, isActive, keepAhead, livePatch, type LiveRow } from "../live";
 import type { MatchRecord } from "../merge";
 import { parseScoreboard, type SidearmGame } from "../sidearm/schedule";
 
@@ -52,10 +52,21 @@ describe("isActive", () => {
     expect(isActive(row({ status: "postponed" }), t0)).toBe(false);
   });
 
-  it("keeps a finished match only until its box score is read", () => {
-    expect(isActive(row({ status: "final", boxscore_url: "x" }), t0 + 120 * MIN)).toBe(true);
-    expect(isActive(row({ status: "final", boxscore_url: "x", events_scraped: true }), t0 + 120 * MIN)).toBe(false);
-    expect(isActive(row({ status: "final" }), t0 + 120 * MIN)).toBe(false);
+  it("stops once the match is final", () => {
+    expect(isActive(row({ status: "final", boxscore_url: "x" }), t0 + 100 * MIN)).toBe(false);
+  });
+});
+
+describe("becomesActive", () => {
+  it("waits for a match that comes into its window before the run ends", () => {
+    expect(becomesActive(row(), t0 - 30 * MIN, t0 - 10 * MIN)).toBe(true);
+    expect(becomesActive(row(), t0 - 30 * MIN, t0 - 20 * MIN)).toBe(false);
+  });
+
+  it("does not wait for one already on, called off or without a time", () => {
+    expect(becomesActive(row(), t0, t0 + 30 * MIN)).toBe(false);
+    expect(becomesActive(row({ status: "postponed" }), t0 - 30 * MIN, t0)).toBe(false);
+    expect(becomesActive(row({ time_tbd: true }), t0 - 30 * MIN, t0)).toBe(false);
   });
 });
 

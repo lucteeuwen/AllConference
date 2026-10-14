@@ -30,9 +30,10 @@ export const GLOBAL_INTERVAL_MS = 500;
 export const FULL_EVERY_MS = 20 * 60_000;
 
 /**
- * Live polling, only with `--live`. Off by default: SIDEARM does not update a
- * game while it is being played (a week of polls in October 2026 caught 2
- * changes, both the final whistle), so it was load on the schools for nothing.
+ * Live polling, with `--live`. It reads only the hosts' SIDEARM Stats feeds
+ * (one small request per match a minute on sidearmstats.com), never the
+ * schools' own sites: those don't update a game while it is played (a week of
+ * polling them in October 2026 caught 2 changes, both the final whistle).
  */
 export const LIVE = {
   /** A match is "active" from this long before kickoff… */
@@ -40,8 +41,11 @@ export const LIVE = {
   /** …until this long after kickoff, unless it goes final first. */
   tailMs: 150 * 60_000,
   pollMs: 60_000,
-  /** How long one run keeps polling. */
-  budgetMs: 9 * 60_000,
+  /**
+   * How long one run keeps polling. Just under the workflow's 30-minute tick,
+   * so back-to-back runs cover a whole match; the job's timeout sits above it.
+   */
+  budgetMs: 28 * 60_000,
 };
 
 /** What differs between the two sports on the sites the scraper reads. */
