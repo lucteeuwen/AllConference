@@ -1,6 +1,6 @@
 import "./env";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { LIVE, SEASON, SEASON_START, SPORT_SOURCES } from "./config";
+import { FULL_EVERY_MS, LIVE, SEASON, SEASON_START, SPORT_SOURCES } from "./config";
 import { createDb, must, upsertInChunks } from "./db";
 import { fetchJson, fetchText, requestsMade, unreachableHosts } from "./http";
 import { cacheLogo, pickLogoSource } from "./logos";
@@ -19,7 +19,7 @@ import { buildBracket, type SlotRow } from "./tournament";
 import { resolveWatchLinks, type WatchSource } from "./watch";
 
 /**
- * npm run scrape [-- --rosters] [--refresh-logos] [--dry-run] [--no-live] [--json] [--auto | --live-only]
+ * npm run scrape [-- --rosters] [--refresh-logos] [--dry-run] [--live] [--json] [--auto | --live-only]
  *
  *  1. Read every CCIW school's SIDEARM schedule feed and merge the two views
  *     of each conference game into one match. Men's soccer, then women's: each
@@ -27,13 +27,16 @@ import { resolveWatchLinks, type WatchSource } from "./watch";
  *  2. Fit the CCIW tournament into the bracket (TBC where undecided).
  *  3. Pull box scores for newly finished games, rosters and stats when asked,
  *     and logos and player photos when a school's URL for one changes.
- *  4. If a match is on (15 min before kickoff until it ends), keep polling
- *     just that match -- its two schools' feeds and its box score, writing only
- *     the columns a game changes -- every minute for up to 9 minutes.
+ *  4. With `--live` only: if a match is on (15 min before kickoff until it
+ *     ends), keep polling just that match -- its two schools' feeds and its box
+ *     score, writing only the columns a game changes -- every minute for up to
+ *     9 minutes. Off by default: SIDEARM does not update a game while it is
+ *     played (see LIVE in ./config).
  *
- * `--auto` is what the workflow runs every five minutes: a full pass if the
- * last one is more than 14 minutes old, otherwise straight to live mode.
- * `--live-only` skips the full pass and exits within seconds if nothing is on.
+ * `--auto` is what the workflow runs every 30 minutes: a full pass if the last
+ * one is more than 20 minutes old, otherwise nothing (or live mode, with
+ * `--live`). `--live-only` skips the full pass and exits within seconds if
+ * nothing is on.
  * `--refresh-logos` uploads every logo again, even when its source is unchanged.
  */
 
@@ -42,7 +45,8 @@ const options = {
   dryRun: args.has("--dry-run"),
   rosters: args.has("--rosters"),
   refreshLogos: args.has("--refresh-logos"),
-  live: !args.has("--no-live"),
+  // `--no-live` is still accepted, and is now what happens anyway.
+  live: args.has("--live") && !args.has("--no-live"),
   json: args.has("--json"),
   auto: args.has("--auto"),
   liveOnly: args.has("--live-only"),
@@ -722,7 +726,7 @@ async function liveLoop(ctxs: Context[], startedAt: number, immediate: boolean):
   return polls === 0 || answered;
 }
 
-/** True when the last successful full pass is older than `LIVE.fullEveryMs`. */
+/** True when the last successful full pass is older than `FULL_EVERY_MS`. */
 async function needsFullPass(db: SupabaseClient): Promise<boolean> {
   const last = await must<{ started_at: string }[]>(
     db
@@ -734,7 +738,7 @@ async function needsFullPass(db: SupabaseClient): Promise<boolean> {
       .limit(1),
     "last full run",
   );
-  return !last[0] || Date.now() - Date.parse(last[0].started_at) > LIVE.fullEveryMs;
+  return !last[0] || Date.now() - Date.parse(last[0].started_at) > FULL_EVERY_MS;
 }
 
 async function finishRun(db: SupabaseClient, runId: number | null, ok: boolean, log: string[]) {
@@ -833,10 +837,14 @@ async function main() {
     };
   };
 
-  const liveOnly =
-    !options.dryRun &&
-    (options.liveOnly || (options.auto && !options.rosters && !(await needsFullPass(db))));
-  if (liveOnly) return runLiveOnly(db, await Promise.all(SPORTS.map(contextFor)), log, startedAt);
+  const notDue = !options.dryRun && options.auto && !options.rosters && !(await needsFullPass(db));
+  if (notDue && !options.live && !options.liveOnly) {
+    console.log("full pass not due");
+    return;
+  }
+  if (!options.dryRun && (options.liveOnly || notDue)) {
+    return runLiveOnly(db, await Promise.all(SPORTS.map(contextFor)), log, startedAt);
+  }
 
   let runId: number | null = null;
   if (!options.dryRun) {
