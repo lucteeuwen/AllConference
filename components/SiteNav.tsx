@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { LogoTile } from "@/components/Logo";
-import { SlidingSegments } from "@/components/SlidingSegments";
+import { LeagueSelect } from "@/components/LeagueSelect";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { isSport, SPORT_COOKIE, SPORT_SHORT, SPORTS, sportHref, switchSportHref, type Sport } from "@/lib/sport";
+import { isSport, SPORT_COOKIE, sportHref, type Sport } from "@/lib/sport";
 import { useSport } from "@/lib/use-sport";
 
 type NavItem = {
@@ -78,21 +78,9 @@ function isActive(pathname: string, sport: Sport, href: string): boolean {
   return pathname === full || pathname.startsWith(`${full}/`);
 }
 
-/** Men | Women. Keeps the visitor in the same section on the other side. */
-function SportSwitch({ pathname, sport }: { pathname: string; sport: Sport }) {
-  return (
-    <SlidingSegments
-      label="Sport"
-      value={sport}
-      options={SPORTS.map((value) => ({ value, label: SPORT_SHORT[value], href: switchSportHref(pathname, value) }))}
-      itemClassName="px-3"
-    />
-  );
-}
-
 /**
- * Bottom tab bar on phones with the sport switch above the page, a top bar
- * from the medium breakpoint up.
+ * Bottom tab bar on phones (the league menu is in each page's Lockup), a top
+ * bar from the medium breakpoint up.
  */
 export function SiteNav() {
   const pathname = usePathname();
@@ -111,9 +99,8 @@ export function SiteNav() {
         <div className="mx-auto flex h-16 items-center gap-8 px-6" style={{ maxWidth: "var(--page-max)" }}>
           <Link href={sportHref(sport, "/")} className="flex items-center gap-2.5">
             <LogoTile className="size-9" />
-            <span className="text-[15px] font-bold tracking-tight text-white">CCIW Soccer</span>
           </Link>
-          <SportSwitch pathname={pathname} sport={sport} />
+          <LeagueSelect tone="onDark" className="-ml-5" />
           <nav className="flex items-center gap-1">
             {items.map((item) => (
               <Link
@@ -133,10 +120,6 @@ export function SiteNav() {
           <ThemeToggle tone="onDark" className="ml-auto" />
         </div>
       </header>
-
-      <div className="flex justify-center px-4 pt-3 md:hidden">
-        <SportSwitch pathname={pathname} sport={sport} />
-      </div>
 
       <nav
         aria-label="Primary"

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { LeagueSelect } from "@/components/LeagueSelect";
 import { LogoMark } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -14,17 +15,20 @@ type Props = {
 /**
  * The navy band that opens every page. Full-bleed on phones to match the
  * reference, an inset rounded panel once the top nav takes over on desktop.
+ * Phones have no top nav, so the league menu takes the place of the title and
+ * subtitle there (the title stays for screen readers).
  */
 export function Lockup({ title, subtitle, aside, children }: Props) {
   return (
     <div className="-mx-4 bg-navy px-4 py-4 md:mx-0 md:mt-6 md:rounded-card md:px-6 md:py-5">
-      <div className="flex items-center gap-3">
+      <div className="relative flex items-center gap-3">
         <LogoMark className="h-7 w-auto shrink-0" title="AllConference" />
         <span aria-hidden="true" className="h-7 w-px shrink-0 bg-white/20" />
         <div className="min-w-0 flex-1">
-          <h1 className="bc-title truncate text-[1.05rem] text-white md:text-[1.2rem]">{title}</h1>
+          <LeagueSelect tone="lockup" className="md:hidden" />
+          <h1 className="bc-title truncate text-[1.05rem] text-white max-md:sr-only md:text-[1.2rem]">{title}</h1>
           {subtitle ? (
-            <p className="truncate text-[0.72rem] text-white/55">{subtitle}</p>
+            <p className="truncate text-[0.72rem] text-white/55 max-md:hidden">{subtitle}</p>
           ) : null}
         </div>
         {aside ? <div className="shrink-0">{aside}</div> : null}
