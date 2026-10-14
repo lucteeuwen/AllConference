@@ -1,3 +1,4 @@
+import type { Sport } from "@/lib/sport";
 import type { NamedTeam } from "@/lib/video";
 import { BROADCASTS, SEASON_START } from "./config";
 import { fetchJson, fetchWithRetry } from "./http";
@@ -65,13 +66,13 @@ export function hudlSiteOf(raw: string | null | undefined): HudlSite | null {
   return site && /^[\w-]+$/.test(site) ? { portal: `https://${host}`, site } : null;
 }
 
-/** One site's men's soccer broadcasts this season. */
-async function fetchSite(site: HudlSite): Promise<Broadcast[]> {
+/** One site's broadcasts in this section (one sport) this season. */
+async function fetchSite(site: HudlSite, section: number): Promise<Broadcast[]> {
   const found: Broadcast[] = [];
   for (let page = 1, pages = 1; page <= pages; page++) {
     const query = new URLSearchParams({
       site: site.site,
-      section_id: String(BROADCASTS.section),
+      section_id: String(section),
       after: SEASON_START,
       sortBy: "date",
       sortDir: "asc",
@@ -92,7 +93,10 @@ async function fetchSite(site: HudlSite): Promise<Broadcast[]> {
  * Every listed site's broadcasts, and the sites that could not be read (by
  * lower-cased site name), so their games keep what they had.
  */
-export async function fetchBroadcasts(sites: HudlSite[]): Promise<{ broadcasts: Broadcast[]; failed: Set<string> }> {
+export async function fetchBroadcasts(
+  sites: HudlSite[],
+  section: number,
+): Promise<{ broadcasts: Broadcast[]; failed: Set<string> }> {
   const found = new Map<string, Broadcast>();
   const failed = new Set<string>();
   const seen = new Set<string>();
@@ -101,7 +105,7 @@ export async function fetchBroadcasts(sites: HudlSite[]): Promise<{ broadcasts: 
     if (seen.has(key)) continue;
     seen.add(key);
     try {
-      for (const broadcast of await fetchSite(site)) found.set(broadcast.id, broadcast);
+      for (const broadcast of await fetchSite(site, section)) found.set(broadcast.id, broadcast);
     } catch {
       failed.add(key);
     }
@@ -112,7 +116,7 @@ export async function fetchBroadcasts(sites: HudlSite[]): Promise<{ broadcasts: 
 /**
  * One broadcast as its player page describes it, for a link whose site we don't
  * list (a bare `vcloud.hudl.com/broadcast/embed/<id>`) or that a school filed
- * outside men's soccer. Null when the school has taken it down or it never was.
+ * outside the sport's section. Null when the school has taken it down or it never was.
  */
 export async function embeddedBroadcast(id: string): Promise<Pick<Broadcast, "title" | "date"> | null> {
   const response = await fetchWithRetry(`https://vcloud.hudl.com/broadcast/embed/${id}`);
@@ -141,6 +145,7 @@ export function pickBroadcast(
   match: Pick<MatchRecord, "date" | "home_slug" | "away_slug" | "time_tbd">,
   broadcasts: Broadcast[],
   teams: NamedTeam[],
+  sport?: Sport,
 ): GamePick {
   // Without a kickoff time the date is only an anchor; compare by day.
   const window = match.time_tbd ? 24 * HOUR_MS : WINDOW_MS;
@@ -153,5 +158,5 @@ export function pickBroadcast(
       modified: broadcast.date_modified,
       implied: broadcast.team ?? BROADCASTS.sites[broadcast.site],
     }));
-  return pickGame(match, candidates, teams, { before: window, after: window });
+  return pickGame(match, candidates, teams, { before: window, after: window }, sport);
 }

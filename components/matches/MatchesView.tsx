@@ -13,6 +13,8 @@ import { applyFilters, filtersToQuery, type MatchFilters } from "@/lib/filters";
 import { formatDayLabel, matchDayKey } from "@/lib/format";
 import { SEASON_LABEL } from "@/lib/season";
 import { groupMatchesByDate, type DayGroup } from "@/lib/selectors";
+import { SPORT_LABEL, sportHref } from "@/lib/sport";
+import { useSport } from "@/lib/use-sport";
 import { useViewerDay } from "@/lib/use-viewer-day";
 import type { Match, Team } from "@/lib/types";
 
@@ -84,6 +86,8 @@ export function MatchesView({
   renderedAt: number;
 }) {
   const { tz, today } = useViewerDay(renderedAt);
+  const sport = useSport();
+  const listHref = (query: string) => sportHref(sport, `/matches${query}`);
   const dayOf = useCallback((match: Match) => matchDayKey(match, tz), [tz]);
 
   const visible = useMemo(() => applyFilters(matches, filters, dayOf), [matches, filters, dayOf]);
@@ -124,11 +128,11 @@ export function MatchesView({
         id="matches-sticky"
         className="sticky top-0 z-30 -mx-4 flow-root bg-ground px-4 pb-3 md:top-16 md:mx-0 md:px-0"
       >
-        <Lockup title="Matches" subtitle={`${SEASON_LABEL} · CCIW Men's Soccer`}>
+        <Lockup title="Matches" subtitle={`${SEASON_LABEL} · CCIW ${SPORT_LABEL[sport]}`}>
           <DateStrip
             days={days}
             filters={filters}
-            allHref={`/matches${filtersToQuery({ ...filters, day: null })}`}
+            allHref={listHref(filtersToQuery({ ...filters, day: null }))}
             activeDay={filters.day}
             today={today}
           />
@@ -154,7 +158,7 @@ export function MatchesView({
                 : "Try widening the date, switching back to all games, or clearing the team selection."
             }
             actionLabel="Clear all filters"
-            actionHref="/matches"
+            actionHref={listHref("")}
           />
         ) : splitAtToday ? (
           <div className="space-y-7">
@@ -162,8 +166,8 @@ export function MatchesView({
               <EarlierMatches
                 count={pastCount}
                 open={filters.showPast}
-                openHref={`/matches${filtersToQuery({ ...filters, showPast: true })}`}
-                closeHref={`/matches${filtersToQuery({ ...filters, showPast: false })}`}
+                openHref={listHref(filtersToQuery({ ...filters, showPast: true }))}
+                closeHref={listHref(filtersToQuery({ ...filters, showPast: false }))}
               >
                 {past.map((group) => (
                   <DaySection key={group.key} group={group} today={today} renderedAt={renderedAt} />

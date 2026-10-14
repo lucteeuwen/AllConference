@@ -7,7 +7,9 @@ import { TeamBadge } from "@/components/TeamBadge";
 import { FormDots } from "@/components/FormDots";
 import { SlidingSegments } from "@/components/SlidingSegments";
 import { pointsFor, recordFor, sortEntries, type SortColumn, type SortKey } from "@/lib/standings";
+import { teamHref } from "@/lib/sport";
 import type { StandingsRow, StandingsSplit, Team } from "@/lib/types";
+import { useSport } from "@/lib/use-sport";
 
 export type StandingsEntry = {
   row: StandingsRow;
@@ -38,6 +40,7 @@ export function StandingsTable({
   /** Decides what the All view shows; see `recordFor`. */
   conferenceStarted: boolean;
 }) {
+  const sport = useSport();
   const [split, setSplit] = useState<StandingsSplit>("all");
   // Standing is the order that decides the CCIW tournament field, so it is the default.
   const [sort, setSort] = useState<SortKey>("rank");
@@ -128,7 +131,7 @@ export function StandingsTable({
                     {rank}
                   </td>
                   <td className="bc-row">
-                    <Link href={`/teams/${team.slug}`} className="flex items-center gap-2.5 group">
+                    <Link href={teamHref(sport, team.slug)} className="flex items-center gap-2.5 group">
                       <TeamBadge team={team} size="sm" />
                       <span className="font-semibold text-ink group-hover:text-accent">
                         {team.name}

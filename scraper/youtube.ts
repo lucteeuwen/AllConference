@@ -1,3 +1,4 @@
+import type { Sport } from "@/lib/sport";
 import { titleVerdict, type NamedTeam } from "@/lib/video";
 import { SEASON_START, YOUTUBE } from "./config";
 import type { MatchRecord } from "./merge";
@@ -67,6 +68,7 @@ export function pickVideo(
   teams: NamedTeam[],
   /** The team whose channel it is, so a title may leave it out. */
   owner?: string,
+  sport?: Sport,
 ): GamePick {
   // A day anchor says nothing about which of a day's streams is this game.
   if (match.time_tbd) return { url: null, candidates: 0 };
@@ -75,9 +77,9 @@ export function pickVideo(
       .filter((video) => video.live === live)
       .map((video) => ({ url: videoUrl(video.id), title: video.title, date: video.start, implied: owner }));
 
-  const stream = pickGame(match, candidates(true), teams, LIVE_WINDOW);
+  const stream = pickGame(match, candidates(true), teams, LIVE_WINDOW, sport);
   if (stream.url) return stream;
-  const upload = pickGame(match, candidates(false), teams, UPLOAD_WINDOW);
+  const upload = pickGame(match, candidates(false), teams, UPLOAD_WINDOW, sport);
   return upload.candidates === 1 ? upload : { url: null, candidates: upload.candidates };
 }
 
@@ -191,6 +193,6 @@ export class YouTube {
 }
 
 /** A link to one video stays unless YouTube no longer has it or its title is another game. */
-export function videoStillFits(video: Video | undefined, playing: string[], teams: NamedTeam[]): boolean {
-  return Boolean(video) && titleVerdict((video as Video).title, playing, teams) !== "mismatch";
+export function videoStillFits(video: Video | undefined, playing: string[], teams: NamedTeam[], sport?: Sport): boolean {
+  return Boolean(video) && titleVerdict((video as Video).title, playing, teams, sport) !== "mismatch";
 }

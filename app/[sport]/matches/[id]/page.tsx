@@ -33,13 +33,14 @@ import {
   getMatch,
   standingsLines,
 } from "@/lib/selectors";
+import { matchHref, parseSport, sportHref } from "@/lib/sport";
 import type { Lineup, MatchEvent, MatchSide } from "@/lib/types";
 
-type Props = PageProps<"/matches/[id]">;
+type Props = PageProps<"/[sport]/matches/[id]">;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  const match = getMatch(await getSeasonData(), id);
+  const { id, sport } = await params;
+  const match = getMatch(await getSeasonData(parseSport(sport)), id);
   if (!match) return { title: "Match not found" };
   return {
     title: `${sideName(match.home)} vs ${sideName(match.away)}`,
@@ -177,12 +178,13 @@ function ExternalLink({ href, children }: { href: string; children: string }) {
 }
 
 export default async function MatchPage({ params, searchParams }: Props) {
-  const { id } = await params;
-  const data = await getSeasonData();
+  const { id, sport: sportParam } = await params;
+  const sport = parseSport(sportParam);
+  const data = await getSeasonData(sport);
   const base = getMatch(data, id);
   if (!base) notFound();
   const match = await withDetails(base);
-  const video = await verifyVideo(match.video, match, data.teams);
+  const video = await verifyVideo(match.video, match, data.teams, sport);
 
   const query = await searchParams;
   const requested = Array.isArray(query.tab) ? query.tab[0] : query.tab;
@@ -196,11 +198,11 @@ export default async function MatchPage({ params, searchParams }: Props) {
   const hasScore = match.home.score !== null && match.away.score !== null;
 
   const tabs = [
-    { key: "details", label: "Details", href: `/matches/${match.id}?tab=details` },
+    { key: "details", label: "Details", href: matchHref(match.id, "?tab=details") },
     ...(match.lineups
-      ? [{ key: "lineups", label: "Lineups", href: `/matches/${match.id}?tab=lineups` }]
+      ? [{ key: "lineups", label: "Lineups", href: matchHref(match.id, "?tab=lineups") }]
       : []),
-    { key: "teams", label: "Team stats", href: `/matches/${match.id}?tab=teams` },
+    { key: "teams", label: "Team stats", href: matchHref(match.id, "?tab=teams") },
   ];
   const active = tabs.some((tab) => tab.key === requested) ? (requested as string) : "details";
 
@@ -213,7 +215,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
       <section>
         <WashHero home={home} away={away} celebrate={live ? match.id : false}>
           <div className="mb-5 flex items-center justify-between gap-3">
-            <BackButton fallbackHref="/matches" label="Back">
+            <BackButton fallbackHref={sportHref(sport, "/matches")} label="Back">
               <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -362,7 +364,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
               ranks: Object.fromEntries(displayStandings(standings).map((line) => [line.team.slug, line.rank])),
               conference: Object.fromEntries(standings.map((line) => [line.team.slug, line.row.conference])),
               conferenceStarted: conferenceStarted(standings),
-              cards: await getCardCounts([match.home.teamSlug, match.away.teamSlug]),
+              cards: await getCardCounts(sport, [match.home.teamSlug, match.away.teamSlug]),
             })}
             home={home}
             away={away}

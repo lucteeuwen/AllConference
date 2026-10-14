@@ -2,6 +2,7 @@ import Link from "next/link";
 import { TeamBadge } from "@/components/TeamBadge";
 import { DateLead, RowCentre, StatusPill } from "@/components/broadcast/LiveMatch";
 import { competitionLabel } from "@/lib/selectors";
+import { matchHref } from "@/lib/sport";
 import type { Match, MatchSide } from "@/lib/types";
 
 /** Team name, or what a TBC side is waiting on. */
@@ -40,7 +41,7 @@ export function MatchRow({
 
   return (
     <Link
-      href={`/matches/${match.id}`}
+      href={matchHref(match.id)}
       className="bc-card bc-pad bc-shadow block transition hover:border-accent/40"
     >
       <div className="mb-3 flex items-center justify-between gap-2">

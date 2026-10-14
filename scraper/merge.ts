@@ -1,3 +1,4 @@
+import { DEFAULT_SPORT, idPrefix, type Sport } from "@/lib/sport";
 import type { MatchStage, MatchStatus } from "@/lib/types";
 import { SEASON } from "./config";
 import { abbreviate, centralDay, cleanText, shortName, slugify } from "./normalize";
@@ -35,6 +36,7 @@ export type NewTeam = {
 
 export type MatchRecord = {
   id: string;
+  sport: Sport;
   season: number;
   date: string;
   status: MatchStatus;
@@ -72,8 +74,12 @@ export type MatchRecord = {
 export class TeamResolver {
   private byAlias = new Map<string, string>();
   readonly created = new Map<string, NewTeam>();
-  /** Logo candidates seen in the feeds, first one wins. */
-  readonly logoSources = new Map<string, string>();
+  /**
+   * Every logo URL the feeds offer per team. Each school hosts its own copy of
+   * an opponent's logo, so the caller picks one that does not depend on which
+   * feed answered first.
+   */
+  readonly logoSources = new Map<string, Set<string>>();
 
   constructor(private teams: TeamRow[]) {
     for (const team of teams) {
@@ -93,7 +99,7 @@ export class TeamResolver {
     const clean = cleanText(name);
     const known = this.byAlias.get(clean.toLowerCase());
     if (known) {
-      if (logo && !this.logoSources.has(known)) this.logoSources.set(known, logo);
+      this.addLogo(known, logo);
       return known;
     }
 
@@ -116,8 +122,15 @@ export class TeamResolver {
       this.byAlias.set(`slug:${slug}`, slug);
     }
     this.byAlias.set(clean.toLowerCase(), slug);
-    if (logo && !this.logoSources.has(slug)) this.logoSources.set(slug, logo);
+    this.addLogo(slug, logo);
     return slug;
+  }
+
+  private addLogo(slug: string, logo: string | null): void {
+    if (!logo) return;
+    const seen = this.logoSources.get(slug);
+    if (seen) seen.add(logo);
+    else this.logoSources.set(slug, new Set([logo]));
   }
 
   venueFor(slug: string): string {
@@ -157,7 +170,7 @@ function pickPrimary(records: Resolved[]): Resolved {
  * wins for kickoff, score, box score and stream (the host produces them); the
  * visitor's record fills whatever the host left out.
  */
-export function mergeGames(raws: RawGame[], resolver: TeamResolver): {
+export function mergeGames(raws: RawGame[], resolver: TeamResolver, sport: Sport = DEFAULT_SPORT): {
   matches: MatchRecord[];
   placeholders: RawGame[];
 } {
@@ -234,8 +247,10 @@ export function mergeGames(raws: RawGame[], resolver: TeamResolver): {
     matches.push({
       // The id's day is the CONFERENCE's day, deliberately. It is embedded in
       // every /matches/<id> URL and in bracket_slots.match_id, so it must never
-      // follow a reader's zone.
-      id: `${centralDay(date)}-${home}-${away}`,
+      // follow a reader's zone. Women's ids carry a prefix, so a doubleheader
+      // does not collide with the men's game.
+      id: `${idPrefix(sport)}${centralDay(date)}-${home}-${away}`,
+      sport,
       season: SEASON,
       date,
       status,

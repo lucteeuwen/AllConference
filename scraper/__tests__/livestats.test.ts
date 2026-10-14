@@ -5,6 +5,7 @@ import {
   applyLiveStats,
   folderFromStatsUrl,
   folderFromSummaryPage,
+  liveStatsUrl,
   parseLiveStats,
   type LiveStats,
   type LiveStatsFeed,
@@ -119,5 +120,12 @@ describe("applyLiveStats", () => {
   it("never turns a posted result back into a live one", () => {
     const final = record({ status: "final", home_score: 2, away_score: 0 });
     expect(applyLiveStats(final, live(), new TeamResolver(teams))).toBe(final);
+  });
+});
+
+describe("liveStatsUrl", () => {
+  it("reads each sport's own feed", () => {
+    expect(liveStatsUrl("wheaton", "men")).toBe("https://sidearmstats.com/wheaton/msoc/game.json?detail=game");
+    expect(liveStatsUrl("wheaton", "women")).toBe("https://sidearmstats.com/wheaton/wsoc/game.json?detail=game");
   });
 });

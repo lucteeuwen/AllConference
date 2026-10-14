@@ -1,12 +1,13 @@
+import type { Sport } from "@/lib/sport";
 import type { MatchStatus } from "@/lib/types";
-import { LIVESTATS } from "../config";
+import { LIVESTATS, SPORT_SOURCES } from "../config";
 import { fetchJson, fetchText } from "../http";
 import type { MatchRecord, TeamResolver } from "../merge";
 import { centralDay, cleanText } from "../normalize";
 
 /**
  * SIDEARM Stats, the live stats a host school's stat crew keeps during the
- * game: `https://sidearmstats.com/<folder>/msoc/game.json`. Unlike the
+ * game: `https://sidearmstats.com/<folder>/<msoc|wsoc>/game.json`. Unlike the
  * scoreboard feed, which schools update after the game, this one carries the
  * score as it happens. It holds one game per school, the latest one the host
  * opened, so it says nothing about a match until its date and teams agree.
@@ -36,8 +37,8 @@ export type LiveStats = {
   complete: boolean;
 };
 
-export function liveStatsUrl(folder: string): string {
-  return `${LIVESTATS.base}/${folder}/msoc/game.json?detail=game`;
+export function liveStatsUrl(folder: string, sport: Sport): string {
+  return `${LIVESTATS.base}/${folder}/${SPORT_SOURCES[sport].statsSport}/game.json?detail=game`;
 }
 
 function isoDay(us: string): string | null {
@@ -71,7 +72,7 @@ export function parseLiveStats(feed: LiveStatsFeed): LiveStats | null {
 /**
  * The feed's folder from a game's stats link, when the link names it:
  * `sidearmstats.com/<folder>/msoc/`. The other form, a school's own
- * `/sidearmstats/msoc/summary`, only names it inside the page.
+ * `/sidearmstats/<sport>/summary`, only names it inside the page.
  */
 export function folderFromStatsUrl(url: string | null | undefined): string | null {
   try {
@@ -133,7 +134,10 @@ export function applyLiveStats(
 export class LiveStatsReader {
   private folders = new Map<string, string | null>();
 
-  constructor(private log: (message: string) => void) {}
+  constructor(
+    private sport: Sport,
+    private log: (message: string) => void,
+  ) {}
 
   /** Folders worth trying for a match: a member host's own, else the game's stats link. */
   async foldersFor(record: MatchRecord): Promise<string[]> {
@@ -165,7 +169,7 @@ export class LiveStatsReader {
     const results = await Promise.all(
       unique.map(async (folder) => {
         try {
-          return parseLiveStats(await fetchJson<LiveStatsFeed>(liveStatsUrl(folder)));
+          return parseLiveStats(await fetchJson<LiveStatsFeed>(liveStatsUrl(folder, this.sport)));
         } catch (error) {
           this.log(`WARN live stats ${folder}: ${(error as Error).message}`);
           return null;

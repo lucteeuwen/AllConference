@@ -1,3 +1,4 @@
+import { DEFAULT_SPORT, idPrefix, type Sport } from "@/lib/sport";
 import { computeStandings } from "@/lib/standings";
 import type { BracketSlotId } from "@/lib/types";
 import { SEASON } from "./config";
@@ -18,6 +19,7 @@ import type { RawGame, RawRound } from "./sidearm/schedule";
  */
 
 export type SlotRow = {
+  sport: Sport;
   season: number;
   slot: BracketSlotId;
   round: RawRound;
@@ -28,7 +30,7 @@ export type SlotRow = {
   match_id: string | null;
 };
 
-export type SeedRow = { season: number; seed: number; team_slug: string; is_official: boolean };
+export type SeedRow = { sport: Sport; season: number; seed: number; team_slug: string; is_official: boolean };
 
 const ROUNDS: RawRound[] = ["quarterfinal", "semifinal", "final"];
 
@@ -91,8 +93,10 @@ export function buildBracket(input: {
   officialSeeds: Record<number, string> | null;
   conferenceSlugs: string[];
   nameOf: (slug: string) => string;
+  sport?: Sport;
 }): { matches: MatchRecord[]; seeds: SeedRow[]; slots: SlotRow[]; warnings: string[] } {
   const warnings: string[] = [];
+  const sport = input.sport ?? DEFAULT_SPORT;
   const real = input.matches.filter((match) => match.cciw);
   const others = input.matches.filter((match) => !match.cciw);
   const calendar = roundCalendar(input.placeholders, real);
@@ -178,7 +182,8 @@ export function buildBracket(input: {
       continue;
     }
     const placeholder: MatchRecord = {
-      id: `cciw-${SEASON}-${slot.slot}`,
+      id: `${idPrefix(sport)}cciw-${SEASON}-${slot.slot}`,
+      sport,
       season: SEASON,
       date,
       status: "scheduled",
@@ -220,6 +225,7 @@ export function buildBracket(input: {
   return {
     matches: [...others, ...real, ...placeholderMatches].sort((a, b) => a.date.localeCompare(b.date)),
     seeds: Object.entries(seeds).map(([seed, slug]) => ({
+      sport,
       season: SEASON,
       seed: Number(seed),
       team_slug: slug,

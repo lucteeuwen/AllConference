@@ -1,7 +1,9 @@
-# CCIW Men's Soccer
+# CCIW Soccer
 
 Results, fixtures, standings, the CCIW Tournament bracket and rosters for NCAA
-Division III College Conference of Illinois and Wisconsin men's soccer.
+Division III College Conference of Illinois and Wisconsin men's and women's
+soccer. Each sport has its own pages, under `/men` and `/women`; `/` goes to
+whichever the visitor used last.
 
 ```
 SIDEARM sites ──▶ scraper (GitHub Actions) ──▶ Supabase ──▶ Next.js site
@@ -16,11 +18,16 @@ Sports. The scraper in `scraper/` reads, for each school:
 | --- | --- |
 | `/services/adaptive_components.ashx?type=scoreboard&sport_id=…` | The season schedule as JSON: kickoff, home/away, score, tournament, box score link, stream link |
 | `/boxscore.aspx?id=…` | Goals and assists, cards, starting lineups, attendance, referee, stadium |
-| `/sports/mens-soccer/roster/<season>?view=2` | Roster: number, position, class year, height, hometown |
-| `/sports/mens-soccer/stats/<season>` | Season stats: games played and started, goals, assists |
+| `/sports/<mens-soccer\|womens-soccer>/roster/<season>?view=2` | Roster: number, position, class year, height, hometown |
+| `/sports/<mens-soccer\|womens-soccer>/stats/<season>` | Season stats: games played and started, goals, assists |
 
 A conference game appears in both schools' feeds; the two are merged into one
 match, and the host's record wins for kickoff, score, box score and stream.
+
+Each run does men's soccer, then women's. Schools (`teams`) are shared; what
+differs per sport (SIDEARM sport id, national rank) is in `team_sports`, and
+matches, players and the bracket carry a `sport` column. Women's ids start
+with `w-`, so a doubleheader cannot collide with the men's game.
 
 The scraper is polite on purpose: one request per second per site, a
 descriptive User-Agent, box scores fetched once per game, rosters once a day.
@@ -46,7 +53,7 @@ to everything else.
 
 Schools usually paste only their team page on the network into SIDEARM, so the
 full scrape also reads the network's own broadcast list (Hudl vCloud's public
-`/api/viewer/broadcast`, men's soccer section, the nine school sites in
+`/api/viewer/broadcast`, the sport's section, the nine school sites in
 `scraper/config.ts`) and links each game to its exact broadcast
 (`cciwnetwork.com/<school>/?B=<id>`, stored in `matches.broadcast_url`). A
 broadcast counts when it is within 12 hours of kickoff and names both schools
@@ -78,34 +85,35 @@ npm run dev
 
 | Command | What it does |
 | --- | --- |
-| `npm run scrape` | One full scrape pass; if a match is on, then polls just that match every minute for up to 9 min |
-| `npm run scrape -- --auto` | What the workflow runs every 5 min: a full pass if the last is over 14 min old, else live mode only |
+| `npm run scrape` | One full scrape pass, men's then women's |
+| `npm run scrape -- --auto` | What the workflow runs every 30 min: a full pass if the last is over 20 min old, else nothing |
+| `npm run scrape -- --live` | Also polls a match that is on every minute for up to 9 min. Off by default: SIDEARM doesn't update a game while it's played |
 | `npm run scrape -- --live-only` | Live mode alone; exits within seconds when nothing is on |
 | `npm run scrape -- --rosters` | Also refreshes rosters and season stats |
 | `npm run scrape -- --dry-run [--json]` | Reads the feeds and prints what would be written |
-| `npm run scrape -- --no-live` | Skips live mode |
 | `npm test` | Parser tests against saved SIDEARM pages in `scraper/__tests__/fixtures` |
 | `npm run db:push` | Applies new migrations to the linked Supabase project |
 
-`.github/workflows/scrape.yml` runs the scraper with `--auto` every 5 minutes
+`.github/workflows/scrape.yml` runs the scraper with `--auto` every 30 minutes
 from August to November, and with `--rosters` once a day. It needs the
 repository secrets `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
 
-GitHub's native `schedule:` trigger is unreliable below ~15 minutes on public
-repos (observed gaps of hours instead of 5 minutes), so the real 5-minute tick
+GitHub's native `schedule:` trigger is unreliable on public repos (observed
+gaps of hours), so the real 30-minute tick
 is driven by an external cron service (e.g. cron-job.org) calling
 `POST /repos/lucteeuwen/AllConference/actions/workflows/scrape.yml/dispatches`
 with `{"ref":"main","inputs":{"auto":"true"}}` and a repo-scoped PAT
 (`Actions: Read and write`). The native `schedule:` entries stay in the
 workflow as a harmless backstop.
 
-**Live mode** covers a match from 15 minutes before kickoff until its box score
+**Live mode** (only with `--live`; off since October 2026, because SIDEARM
+doesn't update a game while it's played) covers a match from 15 minutes before kickoff until its box score
 is read, or 150 minutes after kickoff. Each minute it re-reads only the feeds of
 the schools in that match and its box score, and writes only the columns a game
 changes (status, score, `finished_at`, `started_at`); the season, bracket, logos
 and rosters are left to the full pass. Schools update their scoreboard feeds
 only after the game, so live mode also reads the host's SIDEARM Stats feed
-(`sidearmstats.com/<folder>/msoc/game.json`), which the stat crew updates as the
+(`sidearmstats.com/<folder>/<msoc|wsoc>/game.json`), which the stat crew updates as the
 game is played. That feed is used only when its day and teams match the match.
 The site does not wait for the scraper to
 show a match as live: from kickoff it counts the minute up itself, and once a
@@ -117,9 +125,9 @@ site's clock counts from it.
 **How often is it scraping?**
 
 - GitHub → *Actions* → *Scrape CCIW data* lists every run with its start time and
-  length, which shows how far GitHub's scheduler drifts from every 5 minutes.
+  length, which shows how far GitHub's scheduler drifts from every 30 minutes.
 - In Supabase, `scrape_runs` has one row per run (`full`, `full+rosters` or `live`;
-  quiet 5-minute ticks with no match on write none). Its `log` shows which matches
+  a trigger that finds no full pass due writes none). Its `log` shows which matches
   were polled and how many polls ran:
   `select started_at, finished_at, mode, ok, log from scrape_runs order by id desc limit 30;`
 - `matches.updated_at` is when a match row last changed.
@@ -152,7 +160,7 @@ Things to know:
   Actions.
 - Pages are cached for 30 seconds, and the match, matches, team and home pages
   refresh themselves every 30 seconds while a match is on. Data is only as fresh
-  as the scraper: about 15 minutes normally, about a minute while a match is on.
+  as the scraper: up to 30 minutes, also while a match is on.
 - The `20260921120000_match_started_at` migration must be applied
   (`npm run db:push`) before the site that reads `started_at` is deployed.
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { LocalTime, type TimedMatch } from "@/components/LocalTime";
 import { TeamBadge } from "@/components/TeamBadge";
+import { matchHref } from "@/lib/sport";
 import type { Team } from "@/lib/types";
 
 export type RailTile = {
@@ -90,7 +91,7 @@ export function ScoreboardRail({
             ref={(el) => {
               tileRefs.current[index] = el;
             }}
-            href={`/matches/${tile.id}`}
+            href={matchHref(tile.id)}
             style={{ animationDelay: `${index * 55}ms`, width: "var(--rail-tile)" }}
             className="bc-card rise-in shrink-0 p-3 transition hover:border-accent/50"
           >

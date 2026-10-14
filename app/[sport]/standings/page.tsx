@@ -7,6 +7,7 @@ import { Bracket } from "@/components/Bracket";
 import { getScorersBy, standingsLines, tableView } from "@/lib/selectors";
 import { SEASON_LABEL } from "@/lib/season";
 import { getSeasonData } from "@/lib/season-data";
+import { parseSport } from "@/lib/sport";
 
 export const metadata: Metadata = {
   title: "Standings",
@@ -14,8 +15,8 @@ export const metadata: Metadata = {
 
 export const revalidate = 60;
 
-export default async function StandingsPage() {
-  const data = await getSeasonData();
+export default async function StandingsPage(props: PageProps<"/[sport]/standings">) {
+  const data = await getSeasonData(parseSport((await props.params).sport));
   const { started, lines } = tableView(standingsLines(data));
   const entries: StandingsEntry[] = lines.map(({ row, team }) => ({ row, team }));
 

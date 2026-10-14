@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import type { CardCounts } from "@/lib/comparison";
 import { SEASON } from "@/lib/season";
+import { idPrefix, sportOfId, type Sport } from "@/lib/sport";
 import { TBC_TEAM } from "@/lib/teams";
 import { FALLBACK_TZ } from "@/lib/timezone";
 import { createServerClient } from "@/lib/supabase/server";
@@ -24,7 +25,9 @@ import type { EventRecord, LineupRecord } from "@/lib/players";
 
 /**
  * The one place that talks to Supabase. Everything a page shows is loaded
- * here once per request (React `cache`) and mapped onto `lib/types.ts`.
+ * here once per request and sport (React `cache`) and mapped onto
+ * `lib/types.ts`. Schools are shared; matches, players, the bracket and the
+ * national rank are per sport.
  * Events and lineups are only needed on a match page, so they load per match.
  */
 
@@ -49,7 +52,6 @@ type TeamRow = {
   timezone: string | null;
   is_conference: boolean;
   logo_url: string | null;
-  national_rank: number | null;
 };
 
 type MatchRow = {
@@ -109,7 +111,7 @@ async function readAll<T>(
   }
 }
 
-function toTeam(row: TeamRow): Team {
+function toTeam(row: TeamRow, nationalRank: number | null): Team {
   return {
     slug: row.slug,
     name: row.name,
@@ -123,7 +125,7 @@ function toTeam(row: TeamRow): Team {
     timezone: row.timezone,
     isConference: row.is_conference,
     logoUrl: row.logo_url,
-    nationalRank: row.national_rank,
+    nationalRank,
   };
 }
 
@@ -169,15 +171,24 @@ function toMatch(row: MatchRow, teams: Map<string, Team>): Match {
 
 const POSITIONS = new Set<Position>(["GK", "D", "M", "F"]);
 
-export const getSeasonData = cache(async (): Promise<SeasonData> => {
+export const getSeasonData = cache(async (sport: Sport): Promise<SeasonData> => {
   const db = createServerClient();
 
-  const [teamRows, matchRows, playerRows, slotRows, seedRows] = await Promise.all([
+  const [teamRows, rankRows, matchRows, playerRows, slotRows, seedRows] = await Promise.all([
     readAll<TeamRow>((from, to) =>
       db
         .from("teams")
-        .select("slug, name, full_name, nickname, abbr, primary_color, secondary_color, location, venue, timezone, is_conference, logo_url, national_rank")
+        .select("slug, name, full_name, nickname, abbr, primary_color, secondary_color, location, venue, timezone, is_conference, logo_url")
         .order("slug")
+        .range(from, to),
+    ),
+    readAll<{ team_slug: string; national_rank: number | null }>((from, to) =>
+      db
+        .from("team_sports")
+        .select("team_slug, national_rank")
+        .eq("sport", sport)
+        .not("national_rank", "is", null)
+        .order("team_slug")
         .range(from, to),
     ),
     readAll<MatchRow>((from, to) =>
@@ -186,6 +197,7 @@ export const getSeasonData = cache(async (): Promise<SeasonData> => {
         .select(
           "id, date, finished_at, status, minute, started_at, home_slug, away_slug, home_placeholder, away_placeholder, home_score, away_score, home_pens, away_pens, venue, timezone, time_tbd, is_conference, stage, bracket_slot, attendance, referee, broadcast_url, recap_url",
         )
+        .eq("sport", sport)
         .eq("season", SEASON)
         .order("date")
         .order("id")
@@ -195,6 +207,7 @@ export const getSeasonData = cache(async (): Promise<SeasonData> => {
       db
         .from("players")
         .select("id, team_slug, number, name, position, year, hometown, height, gp, gs, goals, assists")
+        .eq("sport", sport)
         .eq("season", SEASON)
         .order("id")
         .range(from, to),
@@ -207,13 +220,19 @@ export const getSeasonData = cache(async (): Promise<SeasonData> => {
       home_from: BracketSlotId | null;
       away_from: BracketSlotId | null;
       match_id: string | null;
-    }>((from, to) => db.from("bracket_slots").select("*").eq("season", SEASON).range(from, to)),
+    }>((from, to) => db.from("bracket_slots").select("*").eq("sport", sport).eq("season", SEASON).range(from, to)),
     readAll<{ seed: number; team_slug: string; is_official: boolean }>((from, to) =>
-      db.from("bracket_seeds").select("seed, team_slug, is_official").eq("season", SEASON).range(from, to),
+      db
+        .from("bracket_seeds")
+        .select("seed, team_slug, is_official")
+        .eq("sport", sport)
+        .eq("season", SEASON)
+        .range(from, to),
     ),
   ]);
 
-  const teams = teamRows.map(toTeam);
+  const ranks = new Map(rankRows.map((row) => [row.team_slug, row.national_rank]));
+  const teams = teamRows.map((row) => toTeam(row, ranks.get(row.slug) ?? null));
   const index = new Map(teams.map((team) => [team.slug, team]));
 
   return {
@@ -301,14 +320,14 @@ export async function withDetails(match: Match): Promise<Match> {
   return { ...match, events: details.events, lineups: details.lineups };
 }
 
-const cardCounts = cache(async (key: string): Promise<CardCounts> => {
+const cardCounts = cache(async (sport: Sport, key: string): Promise<CardCounts> => {
   const db = createServerClient();
   const { data, error } = await db
     .from("match_events")
     .select("team_slug, type")
     .in("team_slug", key.split(","))
     .in("type", ["yellow", "red"])
-    .like("match_id", `${SEASON}-%`);
+    .like("match_id", `${idPrefix(sport)}${SEASON}-%`);
   if (error) throw new Error(error.message);
 
   const counts: CardCounts = {};
@@ -322,8 +341,8 @@ const cardCounts = cache(async (key: string): Promise<CardCounts> => {
 });
 
 /** Yellow and red cards this season for the given teams, from the box scores we hold. */
-export function getCardCounts(slugs: string[]): Promise<CardCounts> {
-  return cardCounts([...slugs].sort().join(","));
+export function getCardCounts(sport: Sport, slugs: string[]): Promise<CardCounts> {
+  return cardCounts(sport, [...slugs].sort().join(","));
 }
 
 /** The profile columns the player page reads; absent until the migration runs. */
@@ -395,6 +414,8 @@ export const getPlayerDetails = cache(
     teamSlug: string,
   ): Promise<{ profile: PlayerProfile | null; lineups: LineupRecord[]; events: EventRecord[] }> => {
     const db = createServerClient();
+    // This sport's games only: the school's other team shares the slug.
+    const matchIds = `${idPrefix(sportOfId(playerId))}${SEASON}-%`;
     const [profile, lineups, events] = await Promise.all([
       db.from("players").select("*").eq("id", playerId).maybeSingle(),
       readAll<LineupRecord>((from, to) =>
@@ -402,7 +423,7 @@ export const getPlayerDetails = cache(
           .from("match_lineups")
           .select("match_id, team_slug, starter, position, player_name, player_id")
           .eq("team_slug", teamSlug)
-          .like("match_id", `${SEASON}-%`)
+          .like("match_id", matchIds)
           .order("id")
           .range(from, to),
       ),
@@ -411,7 +432,7 @@ export const getPlayerDetails = cache(
           .from("match_events")
           .select("match_id, minute, type, team_slug, player_name, player_id, assist_name, assist_player_id")
           .eq("team_slug", teamSlug)
-          .like("match_id", `${SEASON}-%`)
+          .like("match_id", matchIds)
           .order("id")
           .range(from, to),
       ),

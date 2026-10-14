@@ -1,4 +1,5 @@
 import { resultFor } from "@/lib/selectors";
+import { sportHref, sportOfId } from "@/lib/sport";
 import type { Match, Player, PlayerGame, PlayerProfile, RecordLine } from "@/lib/types";
 
 /**
@@ -7,8 +8,9 @@ import type { Match, Player, PlayerGame, PlayerProfile, RecordLine } from "@/lib
  * those scraped before the roster was), so names are matched on read.
  */
 
-export function playerHref(player: Pick<Player, "id">): string {
-  return `/players/${player.id}`;
+/** A player's page; the id says which sport. */
+export function playerHref(player: Pick<Player, "id">, query = ""): string {
+  return sportHref(sportOfId(player.id), `/players/${player.id}${query}`);
 }
 
 /** The same folding as the scraper's `slugify`, which builds player ids from names. */
