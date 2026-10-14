@@ -790,7 +790,11 @@ async function fullPass(ctx: Context): Promise<boolean> {
   // Schedules first: they matter most, and a failing roster page should not
   // mark a site as down before its feed has been tried.
   await refreshFeeds(ctx, ctx.conference);
-  await syncMatches(ctx);
+  // With no feed at all there is nothing to merge: the bracket would be rebuilt
+  // from an empty season, which clears its projected seeds and empties the
+  // tournament slots until the sites come back.
+  if (ctx.failedFeeds.size < ctx.conference.length) await syncMatches(ctx);
+  else note(ctx, "WARN no school feed answered, keeping the stored matches and bracket");
   // Rosters before box scores, so lineups can link to player ids.
   if (options.rosters || players === 0) await syncRosters(ctx);
 
