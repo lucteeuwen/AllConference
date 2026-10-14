@@ -4,6 +4,7 @@ import { LIVE, SEASON, SEASON_START } from "./config";
 import { createDb, must, upsertInChunks } from "./db";
 import { fetchJson, fetchText, requestsMade, unreachableHosts } from "./http";
 import { cacheLogo } from "./logos";
+import { PHOTO_BUCKET, resolvePhoto, storedPhotoPath, type StoredPhoto } from "./photos";
 import { parseNationalPoll, POLL_URL } from "./rankings";
 import { mergeGames, TeamResolver, type MatchRecord, type TeamRow } from "./merge";
 import { slugify } from "./normalize";
@@ -23,7 +24,7 @@ import { resolveWatchLinks, type WatchSource } from "./watch";
  *     of each conference game into one match.
  *  2. Fit the CCIW tournament into the bracket (TBC where undecided).
  *  3. Pull box scores for newly finished games, rosters and stats when asked,
- *     and logos when a school's logo URL changes.
+ *     and logos and player photos when a school's URL for one changes.
  *  4. If a match is on (15 min before kickoff until it ends), keep polling
  *     just that match -- its two schools' feeds and its box score, writing only
  *     the columns a game changes -- every minute for up to 9 minutes.
@@ -487,12 +488,34 @@ async function syncRosters(ctx: Context): Promise<void> {
       const base = team.sidearm_base_url;
       const absolute = (path: string | null) => (path ? new URL(path, base).href : null);
 
+      const stored = await must<(StoredPhoto & { id: string })[]>(
+        ctx.db
+          .from("players")
+          .select("id, photo_url, photo_source_url")
+          .eq("season", SEASON)
+          .eq("team_slug", team.slug),
+        "load players",
+      );
+      const storedById = new Map(stored.map((row) => [row.id, row]));
+      const photos = new Map<string, StoredPhoto>();
+      for (const player of roster) {
+        const id = playerId(team.slug, player.name);
+        photos.set(
+          id,
+          await resolvePhoto(ctx.db, id, absolute(player.photoPath), storedById.get(id), {
+            download: !options.dryRun,
+            onWarning: (message) => note(ctx, message),
+          }),
+        );
+      }
+
       const rows = roster.map((player) => {
+        const id = playerId(team.slug, player.name);
         const line =
           stats.find((stat) => player.sidearmId !== null && stat.sidearmId === player.sidearmId) ??
           stats.find((stat) => stat.name.toLowerCase() === player.name.toLowerCase());
         return {
-          id: playerId(team.slug, player.name),
+          id,
           season: SEASON,
           team_slug: team.slug,
           sidearm_id: player.sidearmId,
@@ -506,7 +529,7 @@ async function syncRosters(ctx: Context): Promise<void> {
           gs: line?.gs ?? 0,
           goals: line?.goals ?? 0,
           assists: line?.assists ?? 0,
-          photo_url: absolute(player.photoPath),
+          ...photos.get(id),
           bio_url: absolute(player.bioPath),
           position_long: player.positionLong || null,
           weight: player.weight || null,
@@ -538,12 +561,15 @@ async function syncRosters(ctx: Context): Promise<void> {
       if (!options.dryRun) {
         await upsertInChunks(ctx.db, "players", unique, "id");
         const ids = unique.map((row) => row.id);
-        const stored = await must<{ id: string }[]>(
-          ctx.db.from("players").select("id").eq("season", SEASON).eq("team_slug", team.slug),
-          "load players",
-        );
-        const gone = stored.map((row) => row.id).filter((id) => !ids.includes(id));
-        if (gone.length) await must(ctx.db.from("players").delete().in("id", gone), "delete players");
+        const goneRows = stored.filter((row) => !ids.includes(row.id));
+        if (goneRows.length) {
+          await must(ctx.db.from("players").delete().in("id", goneRows.map((row) => row.id)), "delete players");
+          const files = goneRows.map((row) => storedPhotoPath(row.photo_url)).filter((path) => path !== null);
+          if (files.length) {
+            const { error } = await ctx.db.storage.from(PHOTO_BUCKET).remove(files);
+            if (error) note(ctx, `WARN photos ${team.slug}: could not remove ${files.length} files: ${error.message}`);
+          }
+        }
       }
       unique.forEach((row) => ctx.playerIds.add(row.id));
       note(ctx, `roster ${team.slug}: ${unique.length} players, ${stats.length} stat lines`);

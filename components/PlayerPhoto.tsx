@@ -24,17 +24,20 @@ export function PlayerPhoto({
   };
 
   if (photoUrl) {
-    // Twice the box for sharp screens; SIDEARM resizes on the fly.
+    // The scraper stores a 256px square crop with a `?v=` version on its URL.
+    // A bare school URL is a photo not cached yet: SIDEARM resizes it on the fly.
     const src = photoUrl.includes("?")
       ? photoUrl
       : `${photoUrl}?width=${size * 2}&height=${size * 2}&mode=crop&anchor=topcenter`;
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- each school hosts its own photos, and already resizes them
+      // eslint-disable-next-line @next/next/no-img-element -- already cropped to size by the scraper, so the optimizer has nothing to add
       <img
         src={src}
         alt={`${player.name}, ${team.name}`}
         width={size}
         height={size}
+        decoding="async"
+        fetchPriority="high"
         className="shrink-0 bg-white/10 object-cover object-top"
         style={frame}
       />

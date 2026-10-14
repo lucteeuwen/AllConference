@@ -1,19 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchWithRetry } from "./http";
+import { IMAGE_EXTENSIONS, mediaType } from "./images";
 
 /**
  * Copies a team's logo into the public `team-logos` bucket. It only downloads
  * again when the source URL in the feeds changes, so the schools' servers see
  * one request per logo per season.
  */
-
-const EXTENSIONS: Record<string, string> = {
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/jpeg": "jpg",
-  "image/svg+xml": "svg",
-  "image/gif": "gif",
-};
 
 export async function cacheLogo(
   db: SupabaseClient,
@@ -23,8 +16,8 @@ export async function cacheLogo(
   const response = await fetchWithRetry(sourceUrl);
   if (!response.ok) return null;
 
-  const contentType = (response.headers.get("content-type") ?? "").split(";")[0].trim();
-  const extension = EXTENSIONS[contentType];
+  const contentType = mediaType(response);
+  const extension = IMAGE_EXTENSIONS[contentType];
   if (!extension) return null;
 
   const bytes = new Uint8Array(await response.arrayBuffer());
