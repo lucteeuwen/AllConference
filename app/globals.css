@@ -18,6 +18,7 @@
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
 
   --color-surface: var(--surface);
   --color-surface-raised: var(--surface-raised);
@@ -38,38 +39,42 @@
   --radius-control: var(--control-radius);
 
   --font-sans: var(--font-family);
+  --font-display: var(--display-family);
 }
 
 /* ---------------------------------------------------------------------------
- * Light palette
+ * Light palette. Navy and red, after the 2024 NFL app.
  * ------------------------------------------------------------------------ */
 :root {
   color-scheme: light;
 
-  /* The logo's blue. Deliberately distinct from the navy chrome. */
-  --brand: #1b62a8;
+  --brand: #013369;
 
-  --navy: #0a1e3c;
-  --navy-deep: #061529;
-  --navy-soft: #16305a;
+  --navy: #013369;
+  --navy-deep: #00224a;
+  --navy-soft: #0b4a8f;
 
-  --accent: #4338ca;
-  --accent-hover: #3730a3;
-  --accent-soft: #eef2ff;
+  --accent: #d50a0a;
+  --accent-hover: #a90808;
+  --accent-soft: #fdecec;
+  /* Text on a solid accent fill. */
+  --on-accent: #ffffff;
+  /* Red that still reads on the navy bands. */
+  --chrome-accent: #ff4d4d;
 
   --surface: #ffffff;
   --surface-raised: #ffffff;
-  --ground: #f4f5f7;
-  --line: #e5e7eb;
+  --ground: #eceef2;
+  --line: #dcdfe5;
 
-  --ink: #111827;
-  --ink-muted: #6b7280;
-  --ink-faint: #9ca3af;
+  --ink: #0b0f17;
+  --ink-muted: #545d6c;
+  --ink-faint: #858d9b;
 
-  --win: #16a34a;
-  --loss: #dc2626;
+  --win: #0a8a3a;
+  --loss: #d50a0a;
   --draw: #9ca3af;
-  --live: #ef4444;
+  --live: #d50a0a;
 
   /* Shadows are built from this so one strength control can scale them. */
   --shadow-rgb: 16 24 40;
@@ -82,29 +87,27 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --brand: #2c7bc9;
+  --navy: #02254f;
+  --navy-deep: #01142e;
+  --navy-soft: #0b4a8f;
 
-  --navy: #0a1e3c;
-  --navy-deep: #04101f;
-  --navy-soft: #16305a;
+  --accent: #ff3434;
+  --accent-hover: #ff5c5c;
+  --accent-soft: #3a0d10;
 
-  --accent: #6d63f0;
-  --accent-hover: #8078f5;
-  --accent-soft: #1c1f4d;
+  --surface: #101622;
+  --surface-raised: #161e2d;
+  --ground: #070b12;
+  --line: #232d3f;
 
-  --surface: #0d1a2f;
-  --surface-raised: #132444;
-  --ground: #070f1f;
-  --line: #1e3055;
-
-  --ink: #e8eefc;
-  --ink-muted: #93a4c4;
-  --ink-faint: #64789e;
+  --ink: #f1f4f9;
+  --ink-muted: #9aa4b5;
+  --ink-faint: #687286;
 
   --win: #22c55e;
-  --loss: #f05252;
-  --draw: #64789e;
-  --live: #ff5a5a;
+  --loss: #ff4d4d;
+  --draw: #687286;
+  --live: #ff3b3b;
 
   --shadow-rgb: 0 0 0;
   /* Several schools use a navy that vanishes against the dark surface. */
@@ -115,27 +118,47 @@
  * Shape, density, type and motion. Shared across both themes.
  * ------------------------------------------------------------------------ */
 :root {
-  --card-radius: 5px;
-  --control-radius: 999px;
+  --card-radius: 4px;
+  --control-radius: 3px;
   --border-width: 1px;
-  --shadow-strength: 1;
+  --shadow-strength: 0.55;
   --density: 1;
   --page-max: 64rem;
   --section-gap: 2rem;
   --badge-radius: 50%;
 
-  --font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* Barlow for reading, Barlow Condensed in heavy italic caps for display. */
+  --font-family: var(--font-barlow), "Helvetica Neue", Arial, sans-serif;
   --font-scale: 1;
-  --heading-weight: 900;
-  --label-tracking: 0.12em;
-  --heading-tracking: -0.02em;
+  --heading-weight: 800;
+  --label-tracking: 0.05em;
+  --heading-tracking: 0;
+
+  /* Display type: page titles, section headers, labels and scores. */
+  --display-family: var(--font-barlow-condensed), "Arial Narrow", sans-serif;
+  --display-style: italic;
+  --display-transform: uppercase;
+  --label-family: var(--display-family);
+  --score-family: var(--display-family);
+  --score-style: italic;
+  --headline-size: 2.15rem;
+  --headline-size-md: 3.1rem;
+  --headline-leading: 0.9;
+  --hero-title-size: 2.5rem;
+  --hero-title-size-md: 3.6rem;
+  --section-size: 1.75rem;
+  --section-transform: uppercase;
+  --section-tracking: 0;
+
+  /* Diagonal stripes over the navy bands and heroes. */
+  --chrome-pattern: repeating-linear-gradient(-58deg, rgb(255 255 255 / 0.05) 0 2px, transparent 2px 15px);
 
   /* Broadcast specifics */
-  --wm-opacity: 0.28;
+  --wm-opacity: 0.2;
   --wm-scale: 1;
   --wash-strength: 1;
-  --wash-angle: 100deg;
-  --rule-height: 4px;
+  --wash-angle: 90deg;
+  --rule-height: 6px;
   --hero-pad: 1.75rem;
   --rail-tile: 188px;
 
@@ -196,13 +219,253 @@ body {
 }
 
 .bc-label {
+  font-family: var(--label-family);
   letter-spacing: var(--label-tracking);
   font-weight: var(--heading-weight);
   text-transform: uppercase;
 }
 .bc-title {
+  font-family: var(--display-family);
+  font-style: var(--display-style);
+  text-transform: var(--display-transform);
   font-weight: var(--heading-weight);
   letter-spacing: var(--heading-tracking);
+}
+.bc-score {
+  font-family: var(--score-family);
+  font-style: var(--score-style);
+}
+
+/* Big page titles. */
+.bc-headline {
+  position: relative;
+  font-size: var(--headline-size);
+  line-height: var(--headline-leading);
+}
+@media (min-width: 48rem) {
+  .bc-headline {
+    font-size: var(--headline-size-md);
+  }
+}
+.bc-headline-hero {
+  --headline-size: var(--hero-title-size, 1.5rem);
+  --headline-size-md: var(--hero-title-size-md, 1.9rem);
+}
+.bc-section-title {
+  line-height: 1.15;
+  font-size: var(--section-size);
+  text-transform: var(--section-transform);
+  letter-spacing: var(--section-tracking);
+}
+
+.bc-chrome {
+  background-image: var(--chrome-pattern);
+}
+
+/* ---------------------------------------------------------------------------
+ * Gridiron dressing. What tokens alone can't say: red last words in titles,
+ * the red slab in title bands, underlined sections, segments and tabs, and
+ * tall italic scores.
+ * ------------------------------------------------------------------------ */
+
+/* Before the sliding pill is placed, the active segment paints its own fill. */
+.bc-seg[data-slid="true"] .bc-seg-item {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* The sticky matches header would eat a phone screen with a full headline. */
+#matches-sticky .bc-headline {
+  font-size: 1.75rem;
+}
+
+/* Headlines: giant italic caps, the last words in red. */
+.bc-headline {
+  font-weight: 900;
+  letter-spacing: -0.005em;
+}
+.bc-chrome .bc-hl-rest {
+  color: var(--chrome-accent);
+}
+.bc-section-title .bc-hl-rest {
+  color: var(--accent);
+}
+.bc-lockup-sub {
+  font-family: var(--display-family);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.7);
+}
+
+/* A red slab cut diagonally into the right of every title band. */
+.bc-lockup {
+  position: relative;
+  overflow: hidden;
+}
+.bc-lockup::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -2.5rem;
+  width: 7rem;
+  background: var(--accent);
+  transform: skewX(-20deg);
+  box-shadow: -14px 0 0 rgb(255 255 255 / 0.08);
+}
+
+/* Chips beside the title stay legible where they cross the slab. */
+.bc-lockup-aside > * {
+  background: var(--navy-deep);
+}
+
+/* Section headers: a thick rule with a red slash at the start. */
+.bc-section {
+  position: relative;
+  padding-bottom: 0.45rem;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 0.9rem;
+}
+.bc-section::after {
+  content: "";
+  position: absolute;
+  left: 0.25rem;
+  bottom: -2px;
+  width: 3.25rem;
+  height: 6px;
+  background: var(--accent);
+  transform: skewX(-24deg);
+}
+.bc-section-action {
+  font-family: var(--display-family);
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+}
+
+/* Segmented controls become big italic words with a sliding red underline. */
+.bc-seg {
+  gap: 1.1rem;
+  padding: 0 0.2rem;
+  background: transparent;
+  box-shadow: none;
+}
+.bc-seg-pill {
+  top: auto;
+  bottom: -2px;
+  height: 5px;
+  border-radius: 0;
+  background: var(--accent);
+  box-shadow: none;
+  transform: skewX(-20deg);
+}
+.bc-seg-item {
+  padding: 0.15rem 0.1rem 0.35rem;
+  font-family: var(--display-family);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border-radius: 0;
+}
+.bc-seg-item[aria-current="true"],
+.bc-seg-item[aria-pressed="true"] {
+  color: var(--ink);
+  background: transparent;
+  box-shadow: none;
+}
+
+.bc-tab {
+  font-family: var(--display-family);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 1.15rem;
+  text-transform: uppercase;
+}
+.bc-tab-on {
+  color: var(--ink);
+}
+.bc-tab-rule {
+  height: 4px;
+  border-radius: 0;
+  background: var(--accent);
+}
+
+/* Scores: tall italic numerals, no chips. */
+.bc-row-score {
+  font-size: 1.85rem;
+  font-weight: 900;
+}
+.bc-hero-score {
+  font-size: 3.2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+@media (min-width: 48rem) {
+  .bc-hero-score {
+    font-size: 5rem;
+  }
+}
+.bc-tile-score {
+  font-size: 1.3rem;
+}
+.bc-score-win {
+  background: transparent;
+  color: var(--ink);
+}
+.bc-pts {
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+.bc-tile {
+  border-top: 3px solid var(--navy);
+}
+
+.bc-cta {
+  border: 0;
+  border-radius: 2px;
+  background: var(--accent);
+  color: #fff;
+  font-style: italic;
+  font-size: 0.9rem;
+  padding: 0.6rem 1.6rem;
+}
+.bc-cta:hover {
+  background: #fff;
+  color: var(--navy);
+}
+
+.bc-hero-texture {
+  background-image: var(--chrome-pattern);
+  background-size: auto;
+  opacity: 1;
+}
+
+.bc-toplink {
+  border-radius: 0;
+  font-family: var(--display-family);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+}
+.bc-toplink[aria-current="page"] {
+  background: transparent;
+  box-shadow: inset 0 -4px 0 var(--chrome-accent);
+}
+.bc-tablink {
+  font-family: var(--display-family);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 /* Horizontal chip rails scroll without a visible scrollbar. */

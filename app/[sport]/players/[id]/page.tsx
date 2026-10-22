@@ -3,9 +3,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BackButton } from "@/components/BackButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { SiteMenu } from "@/components/SiteMenu";
 import { DetailRow } from "@/components/DetailRow";
 import { EventIcon } from "@/components/EventIcon";
+import { Headline } from "@/components/broadcast/Headline";
 import { WashHero } from "@/components/broadcast/WashHero";
 import { OverlapCard } from "@/components/broadcast/OverlapCard";
 import { PlayerPhoto } from "@/components/PlayerPhoto";
@@ -88,7 +89,7 @@ const oneDecimal = (value: number | null) => (value === null ? null : value.toFi
 function Stat({ label, value, accent = false }: { label: string; value: string | number; accent?: boolean }) {
   return (
     <div className="text-center">
-      <p className={`text-[1.3rem] font-black tabular-nums ${accent ? "text-accent" : "text-ink"}`}>{value}</p>
+      <p className={`bc-score text-[1.7rem] leading-none font-black tabular-nums ${accent ? "text-accent" : "text-ink"}`}>{value}</p>
       <p className="bc-label text-[0.62rem] text-ink-faint">{label}</p>
     </div>
   );
@@ -129,7 +130,7 @@ function GameRow({ game, teamSlug }: { game: PlayerGame; teamSlug: string }) {
         {result && own !== null && other !== null ? (
           <span className="flex shrink-0 items-center gap-1.5 text-[0.78rem] font-black text-ink tabular-nums">
             <span
-              className={`inline-flex size-5 items-center justify-center rounded-full text-[0.6rem] text-white ${resultTone[result]}`}
+              className={`inline-flex size-5 items-center justify-center rounded-control text-[0.6rem] text-white ${resultTone[result]}`}
             >
               {result}
             </span>
@@ -235,7 +236,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
               <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
                 {SEASON_LABEL}
               </span>
-              <ThemeToggle tone="onDark" className="md:hidden" />
+              <SiteMenu className="md:hidden" />
             </div>
           </div>
 
@@ -243,7 +244,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
             <PlayerPhoto player={player} team={team} photoUrl={profile?.photoUrl ?? null} size={128} />
             <div className="flex flex-col items-center gap-2 md:items-start">
               {subtitle ? <p className="bc-label text-[0.72rem] text-white/70">{subtitle}</p> : null}
-              <h1 className="bc-title text-[1.7rem] break-words text-white md:text-[2.2rem]">{player.name}</h1>
+              <Headline text={player.name} className="bc-title bc-headline-hero break-words text-white" />
               <Link
                 href={teamHref(sport, team.slug)}
                 className="flex items-center gap-2 text-[0.8rem] font-semibold text-white/80 transition hover:text-white"

@@ -79,7 +79,7 @@ export function BroadcastHome({ data }: { data: HomeData }) {
 
               <Link
                 href={matchHref(hero.id)}
-                className="bc-label mt-6 inline-flex rounded-control border border-white/25 px-5 py-2 text-[0.72rem] text-white transition hover:bg-white hover:text-navy"
+                className="bc-cta bc-label mt-6 inline-flex rounded-control border border-white/25 px-5 py-2 text-[0.72rem] text-white transition hover:bg-white hover:text-navy"
               >
                 View match
               </Link>

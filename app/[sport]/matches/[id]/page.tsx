@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BackButton } from "@/components/BackButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { SiteMenu } from "@/components/SiteMenu";
 import { DetailRow } from "@/components/DetailRow";
 import { EventIcon, type EventIconType } from "@/components/EventIcon";
 import { KickoffRows, KickoffValue } from "@/components/matches/KickoffRows";
@@ -224,7 +224,7 @@ export default async function MatchPage({ params, searchParams }: Props) {
               <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
                 {competitionLabel(match, true)}
               </span>
-              <ThemeToggle tone="onDark" className="md:hidden" />
+              <SiteMenu className="md:hidden" />
             </div>
           </div>
 

@@ -10,17 +10,22 @@ export function PlayerPhoto({
   team,
   photoUrl,
   size,
+  compact = false,
 }: {
   player: Player;
   team: Team;
   photoUrl: string | null;
   size: number;
+  /** A small list headshot on the team colour, loaded lazily, rather than the hero's ringed portrait. */
+  compact?: boolean;
 }) {
   const frame = {
     width: size,
     height: size,
     borderRadius: "var(--card-radius)",
-    boxShadow: "0 0 0 3px rgba(255,255,255,0.55), 0 12px 30px rgba(0,0,0,0.35)",
+    boxShadow: compact
+      ? "inset 0 0 0 1px rgba(0,0,0,0.08)"
+      : "0 0 0 3px rgba(255,255,255,0.55), 0 12px 30px rgba(0,0,0,0.35)",
   };
 
   if (photoUrl) {
@@ -33,21 +38,24 @@ export function PlayerPhoto({
       // eslint-disable-next-line @next/next/no-img-element -- already cropped to size by the scraper, so the optimizer has nothing to add
       <img
         src={src}
-        alt={`${player.name}, ${team.name}`}
+        // In a list the name sits beside it, so the photo stays silent.
+        alt={compact ? "" : `${player.name}, ${team.name}`}
         width={size}
         height={size}
         decoding="async"
-        fetchPriority="high"
-        className="shrink-0 bg-white/10 object-cover object-top"
-        style={frame}
+        loading={compact ? "lazy" : undefined}
+        fetchPriority={compact ? undefined : "high"}
+        className={`shrink-0 object-cover object-top ${compact ? "" : "bg-white/10"}`}
+        style={compact ? { ...frame, background: team.primary } : frame}
       />
     );
   }
 
   return (
     <span
-      role="img"
-      aria-label={`${player.name}, ${team.name}`}
+      role={compact ? undefined : "img"}
+      aria-label={compact ? undefined : `${player.name}, ${team.name}`}
+      aria-hidden={compact || undefined}
       className="team-color inline-flex shrink-0 items-center justify-center font-black tabular-nums"
       style={{
         ...frame,

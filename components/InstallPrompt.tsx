@@ -147,7 +147,7 @@ export function InstallPrompt() {
             <button
               type="button"
               onClick={install}
-              className="mt-2 rounded-control bg-accent px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-accent-hover"
+              className="mt-2 rounded-control bg-accent px-3.5 py-1.5 text-xs font-semibold text-on-accent transition hover:bg-accent-hover"
             >
               Install
             </button>

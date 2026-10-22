@@ -55,7 +55,7 @@ export function ScoreboardRail({
   return (
     <div>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="bc-label flex items-center gap-2 text-[0.78rem] text-ink">
+        <h2 className="bc-label bc-section-title flex items-center gap-2 text-ink">
           <svg viewBox="0 0 24 24" className="size-4 text-accent" fill="currentColor">
             <path d="M13 2L4.5 13.5H11l-1 8.5 8.5-11.5H12z" />
           </svg>
@@ -68,7 +68,7 @@ export function ScoreboardRail({
               type="button"
               onClick={() => page(direction)}
               aria-label={direction === -1 ? "Scroll back" : "Scroll forward"}
-              className="flex size-7 items-center justify-center rounded-full border border-line bg-surface text-ink-muted transition hover:border-accent hover:text-accent"
+              className="flex size-7 items-center justify-center rounded-control border border-line bg-surface text-ink-muted transition hover:border-accent hover:text-accent"
             >
               <svg
                 viewBox="0 0 16 16"
@@ -93,7 +93,7 @@ export function ScoreboardRail({
             }}
             href={matchHref(tile.id)}
             style={{ animationDelay: `${index * 55}ms`, width: "var(--rail-tile)" }}
-            className="bc-card rise-in shrink-0 p-3 transition hover:border-accent/50"
+            className="bc-card bc-tile rise-in shrink-0 p-3 transition hover:border-accent/50"
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <span
@@ -126,8 +126,8 @@ export function ScoreboardRail({
                     </span>
                   </span>
                   <span
-                    className={`min-w-7 rounded-md px-1.5 py-0.5 text-center text-[13px] font-black tabular-nums ${
-                      won ? "bg-navy text-white" : "text-ink-muted"
+                    className={`bc-score bc-tile-score min-w-7 rounded-md px-1.5 py-0.5 text-center text-[13px] font-black tabular-nums ${
+                      won ? "bc-score-win bg-navy text-white" : "text-ink-muted"
                     }`}
                   >
                     {entry.score ?? "–"}

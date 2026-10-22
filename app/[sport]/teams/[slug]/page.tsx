@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BackButton } from "@/components/BackButton";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { SiteMenu } from "@/components/SiteMenu";
+import { Headline } from "@/components/broadcast/Headline";
 import { WashHero } from "@/components/broadcast/WashHero";
 import { OverlapCard } from "@/components/broadcast/OverlapCard";
 import { TeamMatchList } from "@/components/matches/TeamMatchList";
@@ -12,18 +13,18 @@ import { RankedTag } from "@/components/RankedTag";
 import { TeamBadge } from "@/components/TeamBadge";
 import { FormDots } from "@/components/FormDots";
 import { PlayerLink } from "@/components/PlayerLink";
+import { PlayerPhoto } from "@/components/PlayerPhoto";
 import { playerHref } from "@/lib/players";
 import { buildRailTiles } from "@/lib/rail";
 import { SEASON_LABEL } from "@/lib/season";
 import { pointsFor } from "@/lib/standings";
 import { renderedAt } from "@/lib/rendered-at";
-import { getSeasonData } from "@/lib/season-data";
+import { getRosterPhotos, getSeasonData } from "@/lib/season-data";
 import {
   conferenceStarted,
   displayStandings,
   getRoster,
   getTeam,
-  goalDifference,
   matchesForTeam,
   standingsLines,
 } from "@/lib/selectors";
@@ -54,7 +55,7 @@ const positionLabel = (position: Player["position"]) =>
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="text-center">
-      <p className="text-[1.15rem] font-black text-ink tabular-nums">{value}</p>
+      <p className="bc-score text-[1.6rem] leading-none font-black text-ink tabular-nums">{value}</p>
       <p className="bc-label text-[0.62rem] text-ink-faint">{label}</p>
     </div>
   );
@@ -79,6 +80,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
   const row = line?.row;
 
   const roster = getRoster(data, slug);
+  const photos = active === "roster" ? await getRosterPhotos(sport, slug) : new Map<string, string>();
   const fixtures = matchesForTeam(data, slug);
   const { tiles, centerIndex } = buildRailTiles(fixtures, standings, 14);
 
@@ -103,17 +105,19 @@ export default async function TeamPage({ params, searchParams }: Props) {
               <span className="bc-label rounded-control bg-white/10 px-3 py-1.5 text-[0.66rem] text-white/80">
                 {SEASON_LABEL}
               </span>
-              <ThemeToggle tone="onDark" className="md:hidden" />
+              <SiteMenu className="md:hidden" />
             </div>
           </div>
 
           <div className="slide-from-left flex flex-col items-center gap-3">
             <TeamBadge team={team} size="xl" ring />
             <div>
-              <h1 className="bc-title flex flex-wrap items-center justify-center gap-2 text-[1.5rem] text-white md:text-[1.9rem]">
-                {team.fullName}
+              <Headline
+                text={team.fullName}
+                className="bc-title bc-headline-hero flex flex-wrap items-center justify-center gap-x-2 text-white"
+              >
                 <RankedTag team={team} onDark />
-              </h1>
+              </Headline>
               <p className="mt-1 text-[0.78rem] text-white/65">
                 {team.nickname} · {team.location}
               </p>
@@ -133,18 +137,10 @@ export default async function TeamPage({ params, searchParams }: Props) {
 
         {row ? (
           <OverlapCard>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-              <Stat label="CCIW" value={`${row.conference.w}-${row.conference.l}-${row.conference.d}`} />
-              <Stat
-                label="CCIW points"
-                value={String(pointsFor(row, "all", started))}
-              />
-              <Stat label="Overall" value={`${row.overall.w}-${row.overall.l}-${row.overall.d}`} />
-              <Stat label="Goals" value={`${row.overall.gf} / ${row.overall.ga}`} />
-              <Stat
-                label="Difference"
-                value={`${goalDifference(row.overall) >= 0 ? "+" : ""}${goalDifference(row.overall)}`}
-              />
+            <div className="grid grid-cols-3 gap-4">
+              <Stat label="Games played" value={String(row.overall.w + row.overall.l + row.overall.d)} />
+              <Stat label="CCIW points" value={String(pointsFor(row, "all", started))} />
+              <Stat label="Goals" value={String(row.overall.gf)} />
             </div>
           </OverlapCard>
         ) : null}
@@ -194,7 +190,16 @@ export default async function TeamPage({ params, searchParams }: Props) {
                               {player.number ?? ""}
                             </td>
                             <td className="bc-row font-semibold text-ink">
-                              <PlayerLink player={player}>{player.name}</PlayerLink>
+                              <span className="flex items-center gap-3">
+                                <PlayerPhoto
+                                  player={player}
+                                  team={team}
+                                  photoUrl={photos.get(player.id) ?? null}
+                                  size={40}
+                                  compact
+                                />
+                                <PlayerLink player={player}>{player.name}</PlayerLink>
+                              </span>
                             </td>
                             <td className="bc-row text-ink-muted">{player.year}</td>
                             <td className="bc-row text-ink-muted">{player.hometown}</td>
@@ -220,14 +225,24 @@ export default async function TeamPage({ params, searchParams }: Props) {
                           href={playerHref(player)}
                           className="bc-row flex items-center gap-3 px-4 transition active:bg-ground"
                         >
-                          <span className="w-7 shrink-0 text-center text-[0.95rem] font-black text-ink-faint tabular-nums">
-                            {player.number ?? ""}
-                          </span>
+                          <PlayerPhoto
+                            player={player}
+                            team={team}
+                            photoUrl={photos.get(player.id) ?? null}
+                            size={52}
+                            compact
+                          />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[0.85rem] font-semibold text-ink">
+                            <p className="truncate text-[0.95rem] font-bold text-ink">
                               {player.name}
                             </p>
-                            <p className="truncate text-[0.72rem] text-ink-muted">
+                            <p className="truncate text-[0.75rem] text-ink-muted">
+                              {player.number !== null && player.number !== undefined ? (
+                                <>
+                                  <span className="bc-score font-black text-ink">{player.number}</span>
+                                  {player.year || player.hometown ? " · " : null}
+                                </>
+                              ) : null}
                               {[player.year, player.hometown].filter(Boolean).join(" · ")}
                             </p>
                           </div>

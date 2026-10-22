@@ -79,14 +79,14 @@ export function DateStrip({ days, filters, allHref, activeDay, today }: Props) {
       >
         <Link
           href={allHref}
-          className={`flex flex-col items-center justify-center rounded-xl px-4 py-2 text-center transition ${
+          className={`flex flex-col items-center justify-center rounded-control px-4 py-2 text-center transition ${
             activeDay === null
-              ? "bg-accent text-white"
+              ? "bg-accent text-on-accent"
               : "bg-white/10 text-white/70 hover:bg-white/16 hover:text-white"
           }`}
         >
-          <span className="text-[13px] font-bold">All</span>
-          <span className="text-[11px] opacity-70">Season</span>
+          <span className="bc-label text-[0.95rem] leading-none">All</span>
+          <span className="mt-0.5 text-[11px] opacity-70">Season</span>
         </Link>
       </div>
 
@@ -101,16 +101,16 @@ export function DateStrip({ days, filters, allHref, activeDay, today }: Props) {
               else chipRefs.current.delete(chip.key);
             }}
             aria-current={active ? "date" : undefined}
-            className={`flex shrink-0 flex-col items-center justify-center rounded-xl px-4 py-2 text-center transition ${
+            className={`flex shrink-0 flex-col items-center justify-center rounded-control px-4 py-2 text-center transition ${
               active
-                ? "bg-accent text-white"
+                ? "bg-accent text-on-accent"
                 : chip.isToday
                   ? "bg-white/16 text-white hover:bg-white/24"
                   : "bg-white/10 text-white/70 hover:bg-white/16 hover:text-white"
             }`}
           >
-            <span className="text-[13px] font-bold whitespace-nowrap">{chip.top}</span>
-            <span className="text-[11px] whitespace-nowrap opacity-70">{chip.bottom}</span>
+            <span className="bc-label text-[0.95rem] leading-none whitespace-nowrap">{chip.top}</span>
+            <span className="mt-0.5 text-[11px] whitespace-nowrap opacity-70">{chip.bottom}</span>
           </Link>
         );
       })}

@@ -101,19 +101,19 @@ export function SlidingSegments<T extends string>({
       ref={root}
       role="group"
       aria-label={label}
-      className={`group/seg relative flex gap-1 rounded-control bg-ground p-1 ${ringed ? "ring-1 ring-line" : ""}`}
+      className={`bc-seg group/seg relative flex gap-1 rounded-control bg-ground p-1 ${ringed ? "ring-1 ring-line" : ""}`}
     >
       <span
         ref={pill}
         aria-hidden="true"
-        className="bc-slider absolute inset-y-1 rounded-control bg-accent shadow-sm"
+        className="bc-slider bc-seg-pill absolute inset-y-1 rounded-control bg-accent shadow-sm"
         style={{ opacity: 0 }}
       />
       {options.map((option) => {
         const selected = option.value === active;
-        const className = `bc-slider-text relative z-10 rounded-control ${itemClassName} py-1.5 text-[0.78rem] font-semibold ${
+        const className = `bc-slider-text bc-seg-item relative z-10 rounded-control ${itemClassName} py-1.5 text-[0.78rem] font-semibold ${
           selected
-            ? "bg-accent text-white shadow-sm group-data-[slid=true]/seg:bg-transparent group-data-[slid=true]/seg:shadow-none"
+            ? "bg-accent text-on-accent shadow-sm group-data-[slid=true]/seg:bg-transparent group-data-[slid=true]/seg:shadow-none"
             : "text-ink-muted hover:text-ink"
         }`;
         const remember = (el: HTMLElement | null) => {

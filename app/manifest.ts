@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 /** The navy chrome colour (`--navy` in globals.css), used for the splash and status bar. */
-const NAVY = "#0a1e3c";
+const NAVY = "#013369";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {

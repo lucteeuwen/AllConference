@@ -345,6 +345,26 @@ export function getCardCounts(sport: Sport, slugs: string[]): Promise<CardCounts
   return cardCounts(sport, [...slugs].sort().join(","));
 }
 
+/**
+ * Headshot URLs for one team's roster, keyed by player id. Empty rather than
+ * an error when the photo column isn't there yet, so the roster still renders.
+ */
+export const getRosterPhotos = cache(async (sport: Sport, teamSlug: string): Promise<Map<string, string>> => {
+  const db = createServerClient();
+  const { data, error } = await db
+    .from("players")
+    .select("id, photo_url")
+    .eq("sport", sport)
+    .eq("season", SEASON)
+    .eq("team_slug", teamSlug);
+  const photos = new Map<string, string>();
+  if (error) return photos;
+  for (const row of data ?? []) {
+    if (row.photo_url) photos.set(row.id as string, row.photo_url as string);
+  }
+  return photos;
+});
+
 /** The profile columns the player page reads; absent until the migration runs. */
 type ProfileRow = {
   photo_url?: string | null;

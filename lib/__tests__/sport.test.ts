@@ -26,16 +26,18 @@ describe("sport ids and links", () => {
 });
 
 describe("switchSportHref", () => {
-  it("keeps the section, and a school's page", () => {
+  it("keeps the page on the main pages", () => {
     expect(switchSportHref("/men", "women")).toBe("/women");
     expect(switchSportHref("/men/standings", "women")).toBe("/women/standings");
     expect(switchSportHref("/women/matches", "men")).toBe("/men/matches");
-    expect(switchSportHref("/men/teams/wheaton", "women")).toBe("/women/teams/wheaton");
+    expect(switchSportHref("/men/teams", "women")).toBe("/women/teams");
+    expect(switchSportHref("/men/teams/", "women")).toBe("/women/teams");
   });
 
-  it("sends a match or player page to the list, since it has no twin", () => {
-    expect(switchSportHref("/men/matches/2026-10-04-wheaton-carroll", "women")).toBe("/women/matches");
-    expect(switchSportHref("/women/players/w-2026-wheaton-jane-doe", "men")).toBe("/men/standings#scoring-leaders");
+  it("sends any deeper page to the other league's home", () => {
+    expect(switchSportHref("/men/teams/wheaton", "women")).toBe("/women");
+    expect(switchSportHref("/men/matches/2026-10-04-wheaton-carroll", "women")).toBe("/women");
+    expect(switchSportHref("/women/players/w-2026-wheaton-jane-doe", "men")).toBe("/men");
   });
 });
 

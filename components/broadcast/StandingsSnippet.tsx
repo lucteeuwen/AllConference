@@ -48,7 +48,7 @@ export function StandingsSnippet({
             <span className="w-14 text-right text-[0.75rem] text-ink-muted tabular-nums">
               {played(record)} GP
             </span>
-            <span className="w-8 text-right text-[0.9rem] font-black text-ink tabular-nums">
+            <span className="bc-score bc-pts w-8 text-right text-[0.9rem] font-black text-ink tabular-nums">
               {pointsFor(line.row, "all", conferenceStarted)}
             </span>
           </Link>

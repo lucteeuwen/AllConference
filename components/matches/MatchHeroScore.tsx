@@ -58,7 +58,7 @@ export function MatchHeroScore({
               {scores[1]}
             </span>
           ) : null}
-          <div className="rise-in text-[2.4rem] font-black text-white tabular-nums md:text-[3rem]">
+          <div className="bc-score bc-hero-score rise-in text-[2.4rem] font-black text-white tabular-nums md:text-[3rem]">
             {scores[0]}
             <span className="mx-2 text-white/30">-</span>
             {scores[1]}
@@ -70,9 +70,9 @@ export function MatchHeroScore({
           ) : null}
         </>
       ) : status === "full-time" ? (
-        <div className="text-2xl font-black text-white">–</div>
+        <div className="bc-score text-2xl font-black text-white">–</div>
       ) : (
-        <div className="text-2xl font-black text-white">
+        <div className="bc-score text-2xl font-black text-white">
           <KickoffValue match={{ date: timing.kickoff, timeTbd: Boolean(timing.timeTbd) }} />
         </div>
       )}
