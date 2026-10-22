@@ -1,15 +1,23 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Barlow, Barlow_Condensed } from "next/font/google";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { RouteTracker } from "@/components/RouteTracker";
 import { SiteNav } from "@/components/SiteNav";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+/* Barlow for reading, Barlow Condensed in heavy italic caps for display type. */
+const barlow = Barlow({
+  variable: "--font-barlow",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+const barlowCondensed = Barlow_Condensed({
+  variable: "--font-barlow-condensed",
+  subsets: ["latin"],
+  weight: ["600", "700", "800", "900"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -31,7 +39,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   // The navy matches the desktop header band and the manifest's theme colour.
-  themeColor: "#0a1e3c",
+  themeColor: "#013369",
   // Lets the page draw under the notch so env(safe-area-inset-*) is populated.
   viewportFit: "cover",
 };
@@ -39,7 +47,7 @@ export const viewport: Viewport = {
 /**
  * Applies the stored theme before first paint, so it doesn't flash its
  * default first. It has to run synchronously in the head, which rules out
- * next/script. The storage key matches components/ThemeToggle.tsx.
+ * next/script. The storage key matches lib/theme.ts.
  */
 const bootScript = `
 (function () {
@@ -60,7 +68,7 @@ const bootScript = `
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${barlow.variable} ${barlowCondensed.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: bootScript }} />
       </head>

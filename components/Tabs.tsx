@@ -16,7 +16,7 @@ type Props = {
 /** Underline tab bar. Selection lives in the URL, so tabs are linkable. */
 export function Tabs({ tabs, active, tone = "dark" }: Props) {
   const base = tone === "light" ? "text-white/55" : "text-ink-muted";
-  const on = tone === "light" ? "text-white" : "text-accent";
+  const on = tone === "light" ? "text-white" : "bc-tab-on text-accent";
   const rule = tone === "light" ? "bg-white" : "bg-accent";
 
   return (
@@ -36,13 +36,13 @@ export function Tabs({ tabs, active, tone = "dark" }: Props) {
             replace
             role="tab"
             aria-selected={selected}
-            className={`relative shrink-0 px-4 py-3 text-[13px] font-semibold whitespace-nowrap transition ${
+            className={`bc-tab relative shrink-0 px-4 py-3 text-[13px] font-semibold whitespace-nowrap transition ${
               selected ? on : `${base} hover:opacity-80`
             }`}
           >
             {tab.label}
             {selected ? (
-              <span className={`absolute inset-x-3 -bottom-px h-0.5 rounded-full ${rule}`} />
+              <span className={`bc-tab-rule absolute inset-x-3 -bottom-px h-0.5 rounded-full ${rule}`} />
             ) : null}
           </Link>
         );

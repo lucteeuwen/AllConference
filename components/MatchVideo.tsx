@@ -43,7 +43,7 @@ export function MatchVideo({ video, live }: { video: Video; live: boolean }) {
   return (
     <VideoLink
       href={video.url}
-      className="bc-label inline-flex items-center gap-2 rounded-control bg-accent px-4 py-2.5 text-[0.72rem] text-white transition hover:opacity-90"
+      className="bc-label inline-flex items-center gap-2 rounded-control bg-accent px-4 py-2.5 text-[0.72rem] text-on-accent transition hover:opacity-90"
     >
       <svg viewBox="0 0 16 16" className="size-3.5" fill="currentColor" aria-hidden="true">
         <path d="M4 2.5v11l9-5.5z" />

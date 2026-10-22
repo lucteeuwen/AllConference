@@ -112,8 +112,8 @@ function SlotCard({
             {line.label}
           </span>
           <span
-            className={`min-w-6 rounded-md px-1 text-center text-[0.8rem] font-black tabular-nums ${
-              line.won ? "bg-navy text-white" : "text-ink-muted"
+            className={`bc-score min-w-6 rounded-control px-1 text-center text-[0.95rem] font-black tabular-nums ${
+              line.won ? "bc-score-win bg-navy text-white" : "text-ink-muted"
             }`}
           >
             {line.score ?? ""}

@@ -55,15 +55,18 @@ export function teamHref(sport: Sport, slug: string, query = ""): string {
   return sportHref(sport, `/teams/${slug}${query}`);
 }
 
+const MAIN_SECTIONS = new Set(["matches", "standings", "teams"]);
+
 /**
- * The same section on the other side. A match or player does not exist there,
- * so those go to the list; a school does, so its page stays.
+ * Where switching league leads. A main page (Home, Matches, Standings, Teams)
+ * shows the same page for the other league; anything deeper (a match, team or
+ * player) goes back to the other league's home page.
  */
 export function switchSportHref(pathname: string, to: Sport): string {
-  const [, , section, slug] = pathname.split("/");
-  if (section === "teams" && slug) return sportHref(to, `/teams/${slug}`);
-  if (section === "players") return sportHref(to, "/standings#scoring-leaders");
-  if (section === "matches" || section === "standings" || section === "teams") return sportHref(to, `/${section}`);
+  const [, , section, ...rest] = pathname.split("/");
+  if (section && MAIN_SECTIONS.has(section) && rest.every((part) => part === "")) {
+    return sportHref(to, `/${section}`);
+  }
   return sportHref(to, "/");
 }
 

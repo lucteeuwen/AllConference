@@ -224,7 +224,7 @@ export function EarlierMatches({ count, open, openHref, closeHref, children }: P
             scroll={false}
             onClick={onClick}
             aria-expanded={isOpen}
-            className="flex items-center gap-1.5 rounded-full border border-line bg-surface px-4 py-1.5 text-[13px] font-semibold text-ink-muted transition hover:border-accent hover:text-accent"
+            className="bc-label flex items-center gap-1.5 rounded-control border border-line bg-surface px-4 py-1.5 text-[0.85rem] text-ink-muted transition hover:border-accent hover:text-accent"
           >
             <svg
               viewBox="0 0 16 16"

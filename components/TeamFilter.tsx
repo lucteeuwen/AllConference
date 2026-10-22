@@ -44,7 +44,7 @@ export function TeamFilter({ options, selectedCount, clearHref }: Props) {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className={`flex items-center gap-1.5 rounded-control border px-3.5 py-1.5 text-[0.78rem] font-semibold transition ${
+        className={`flex items-center gap-1.5 bc-label rounded-control border px-3.5 py-1.5 text-[0.85rem] transition ${
           selectedCount > 0
             ? "border-accent bg-accent-soft text-accent"
             : "border-line bg-surface text-ink-muted hover:text-ink"
@@ -52,7 +52,7 @@ export function TeamFilter({ options, selectedCount, clearHref }: Props) {
       >
         Teams
         {selectedCount > 0 ? (
-          <span className="rounded-full bg-accent px-1.5 text-[11px] font-bold text-white tabular-nums">
+          <span className="rounded-control bg-accent px-1.5 text-[11px] font-bold text-on-accent tabular-nums">
             {selectedCount}
           </span>
         ) : null}
@@ -62,7 +62,7 @@ export function TeamFilter({ options, selectedCount, clearHref }: Props) {
       </button>
 
       {open ? (
-        <div className="absolute top-full left-0 z-30 mt-2 w-60 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_20px_40px_-20px_rgba(16,24,40,0.4)]">
+        <div className="absolute top-full left-0 z-30 mt-2 w-60 max-w-[calc(100vw-2rem)] bc-shadow-lift overflow-hidden rounded-card border border-line bg-surface">
           <div className="max-h-72 overflow-y-auto py-1">
             {options.map((option) => (
               <Link
@@ -73,7 +73,7 @@ export function TeamFilter({ options, selectedCount, clearHref }: Props) {
               >
                 <span
                   className={`flex size-4 shrink-0 items-center justify-center rounded border ${
-                    option.selected ? "border-accent bg-accent text-white" : "border-line"
+                    option.selected ? "border-accent bg-accent text-on-accent" : "border-line"
                   }`}
                 >
                   {option.selected ? (

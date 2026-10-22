@@ -140,7 +140,7 @@ export function StandingsTable({
                     </Link>
                   </td>
                   <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{gp}</td>
-                  <td className="bc-row px-2 text-center font-bold tabular-nums text-ink">{pointsFor(row, split, conferenceStarted)}</td>
+                  <td className="bc-row px-2 text-center"><span className="bc-score bc-pts font-bold tabular-nums text-ink">{pointsFor(row, split, conferenceStarted)}</span></td>
                   <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{record.w}</td>
                   <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{record.l}</td>
                   <td className="bc-row px-2 text-center tabular-nums text-ink-muted">{record.d}</td>

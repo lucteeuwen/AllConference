@@ -28,13 +28,13 @@ export function WashHero({ home, away, children, celebrate }: Props) {
        linear-gradient(calc(360deg - var(--wash-angle)), color-mix(in oklab, ${away.primary} calc(100% * var(--wash-strength)), transparent) -10%, transparent 42%)`;
 
   return (
-    <div className="relative overflow-hidden rounded-card bg-navy-deep">
+    <div className="bc-hero bc-chrome relative overflow-hidden rounded-card bg-navy-deep">
       <div aria-hidden="true" className="absolute inset-0" style={{ background: wash }} />
 
       {/* Speckle, standing in for the video's textured hero. */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 opacity-40"
+        className="bc-hero-texture absolute inset-0 opacity-40"
         style={{
           backgroundImage: "radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)",
           backgroundSize: "26px 26px",

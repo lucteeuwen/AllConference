@@ -30,11 +30,11 @@ function Bars({ row }: { row: StatRow }) {
 
   return (
     <div aria-hidden="true" className="mt-1.5 grid grid-cols-2 gap-1">
-      <div className="flex h-1.5 justify-end overflow-hidden rounded-full bg-ground">
-        <span className={`rounded-full ${tone("home")}`} style={{ width: `${homeShare}%` }} />
+      <div className="flex h-1.5 justify-end overflow-hidden bg-ground">
+        <span className={`${tone("home")}`} style={{ width: `${homeShare}%` }} />
       </div>
-      <div className="flex h-1.5 overflow-hidden rounded-full bg-ground">
-        <span className={`rounded-full ${tone("away")}`} style={{ width: `${awayShare}%` }} />
+      <div className="flex h-1.5 overflow-hidden bg-ground">
+        <span className={`${tone("away")}`} style={{ width: `${awayShare}%` }} />
       </div>
     </div>
   );

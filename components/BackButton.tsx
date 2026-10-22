@@ -31,7 +31,7 @@ export function BackButton({ fallbackHref, label, children }: Props) {
       href={fallbackHref}
       onClick={onClick}
       aria-label={label}
-      className="flex size-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+      className="flex size-9 items-center justify-center rounded-control bg-white/10 text-white transition hover:bg-white/20"
     >
       {children}
     </Link>

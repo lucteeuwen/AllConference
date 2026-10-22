@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { LogoTile } from "@/components/Logo";
-import { LeagueSelect } from "@/components/LeagueSelect";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { LeagueName, SiteMenu } from "@/components/SiteMenu";
 import { isSport, SPORT_COOKIE, sportHref, type Sport } from "@/lib/sport";
 import { useSport } from "@/lib/use-sport";
 
@@ -95,19 +94,19 @@ export function SiteNav() {
 
   return (
     <>
-      <header className="bc-sticky sticky top-0 z-40 hidden border-b border-line bg-navy md:block">
+      <header className="bc-sticky bc-chrome sticky top-0 z-40 hidden border-b border-line bg-navy md:block">
         <div className="mx-auto flex h-16 items-center gap-8 px-6" style={{ maxWidth: "var(--page-max)" }}>
           <Link href={sportHref(sport, "/")} className="flex items-center gap-2.5">
             <LogoTile className="size-9" />
           </Link>
-          <LeagueSelect tone="onDark" className="-ml-5" />
+          <LeagueName className="bc-title -ml-5 text-[1.15rem] whitespace-nowrap text-white" />
           <nav className="flex items-center gap-1">
             {items.map((item) => (
               <Link
                 key={item.href}
                 href={sportHref(sport, item.href)}
                 aria-current={isActive(pathname, sport, item.href) ? "page" : undefined}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                className={`bc-toplink rounded-control px-4 py-2 text-sm font-semibold transition ${
                   isActive(pathname, sport, item.href)
                     ? "bg-white/12 text-white"
                     : "text-white/60 hover:bg-white/8 hover:text-white"
@@ -117,7 +116,7 @@ export function SiteNav() {
               </Link>
             ))}
           </nav>
-          <ThemeToggle tone="onDark" className="ml-auto" />
+          <SiteMenu className="ml-auto" />
         </div>
       </header>
 
@@ -133,7 +132,7 @@ export function SiteNav() {
                 <Link
                   href={sportHref(sport, item.href)}
                   aria-current={active ? "page" : undefined}
-                  className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition ${
+                  className={`bc-tablink flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold transition ${
                     active ? "text-accent" : "text-ink-faint"
                   }`}
                 >

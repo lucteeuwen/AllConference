@@ -94,7 +94,7 @@ export function RowCentre({
 
   if (scores) {
     return (
-      <span className="text-[1.3rem] font-black text-ink tabular-nums">
+      <span className="bc-score bc-row-score text-[1.3rem] font-black text-ink tabular-nums">
         <span className={awayWon ? "text-ink-faint" : ""}>{scores[0]}</span>
         <span className="mx-1.5 text-ink-faint">&ndash;</span>
         <span className={homeWon ? "text-ink-faint" : ""}>{scores[1]}</span>

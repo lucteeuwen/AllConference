@@ -83,7 +83,7 @@ export function HeroScore({
 
   if (!scores) {
     return (
-      <div className="text-2xl font-black text-white md:text-3xl">{status === "full-time" ? "–" : "VS"}</div>
+      <div className="bc-score text-2xl font-black text-white md:text-3xl">{status === "full-time" ? "–" : "VS"}</div>
     );
   }
   return (
@@ -96,7 +96,7 @@ export function HeroScore({
           {scores[1]}
         </span>
       ) : null}
-      <div className="rise-in text-[2.4rem] font-black text-white tabular-nums md:text-[3rem]">
+      <div className="bc-score bc-hero-score rise-in text-[2.4rem] font-black text-white tabular-nums md:text-[3rem]">
         {scores[0]}
         <span className="mx-2 text-white/30">-</span>
         {scores[1]}
