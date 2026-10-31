@@ -31,7 +31,8 @@ export const FULL_EVERY_MS = 20 * 60_000;
 
 /**
  * Live polling, with `--live`. It reads only the hosts' SIDEARM Stats feeds
- * (one small request per match a minute on sidearmstats.com), never the
+ * (one small request per match every 30 seconds on sidearmstats.com; the host
+ * gap above spaces a Saturday's four or eight matches out), never the
  * schools' own sites: those don't update a game while it is played (a week of
  * polling them in October 2026 caught 2 changes, both the final whistle).
  */
@@ -40,7 +41,12 @@ export const LIVE = {
   leadMs: 15 * 60_000,
   /** …until this long after kickoff, unless it goes final first. */
   tailMs: 150 * 60_000,
-  pollMs: 60_000,
+  /**
+   * The feed lists only its last five plays, which a busy spell fills in well
+   * under a minute, so this is as slow as the timeline can be and still catch
+   * most shots and fouls (goals are checked against the score regardless).
+   */
+  pollMs: 30_000,
   /**
    * How long one run keeps polling. Just under the workflow's 30-minute tick,
    * so back-to-back runs cover a whole match; the job's timeout sits above it.

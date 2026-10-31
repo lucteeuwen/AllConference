@@ -19,7 +19,9 @@ import { RankedTag } from "@/components/RankedTag";
 import { TeamBadge } from "@/components/TeamBadge";
 import { TeamComparison } from "@/components/TeamComparison";
 import { Tabs } from "@/components/Tabs";
+import { TimelineFilter } from "@/components/TimelineFilter";
 import { compareTeams } from "@/lib/comparison";
+import { isMarker, isScoringOrCard } from "@/lib/events";
 import { getCardCounts, getSeasonData, withDetails } from "@/lib/season-data";
 import { timingOf } from "@/lib/hero";
 import { nameKey, playerLookup, splitAssists, type PlayerLookup } from "@/lib/players";
@@ -58,6 +60,18 @@ function EventLabel({ event, lookup }: { event: MatchEvent; lookup: PlayerLookup
   if (event.type === "red") return named ? <>{name} sent off</> : "Red card";
   if (event.type === "penalty") return named ? <>{name} (pen.)</> : "Penalty goal";
   if (event.type === "own-goal") return "Own goal";
+  if (event.type === "sub") {
+    if (!named) return "Substitution";
+    return event.detail === "off" ? <>{name} off</> : <>{name} on{event.detail ? ` ${event.detail}` : ""}</>;
+  }
+  if (event.type === "shot") {
+    const how = event.detail ? ` · ${event.detail}` : "";
+    return named ? <>Shot by {name}{how}</> : `Shot${how}`;
+  }
+  if (event.type === "foul") return named ? <>Foul by {name}</> : "Foul";
+  if (event.type === "corner") return "Corner kick";
+  if (event.type === "freekick") return "Free kick";
+  if (event.type === "period") return event.detail ?? "";
   if (!named) return "Goal";
   const assists = splitAssists(event.assistName ?? "").filter(hasName);
   if (assists.length === 0) return name;
@@ -85,7 +99,8 @@ function playerMarks(events: MatchEvent[], side: MatchSide, name: string, lookup
     return me && player ? me.id === player.id : nameKey(other) === key;
   };
   const marks: PlayerMark[] = [];
-  for (const event of events) {
+  // Only goals, assists and cards go beside a name; shots and fouls would crowd every row.
+  for (const event of events.filter(isScoringOrCard)) {
     if (event.teamSlug !== side.teamSlug) continue;
     if (isMe(event.playerName)) marks.push({ minute: event.minute, kind: event.type });
     if (event.assistName && splitAssists(event.assistName).some(isMe)) {
@@ -209,6 +224,39 @@ export default async function MatchPage({ params, searchParams }: Props) {
   const standings = standingsLines(data);
   const lookup = playerLookup(data.players);
 
+  const timeline = (
+    <ol className="space-y-2.5">
+      {match.events.map((event, index) => {
+        if (isMarker(event)) {
+          return (
+            <li key={index} className="bc-label flex items-center gap-3 py-1 text-[0.65rem] text-ink-faint">
+              <span aria-hidden="true" className="h-px flex-1 bg-line" />
+              <EventIcon type="period" />
+              {event.detail}
+              <span aria-hidden="true" className="h-px flex-1 bg-line" />
+            </li>
+          );
+        }
+        const isHome = event.teamSlug === match.home.teamSlug;
+        return (
+          <li
+            key={index}
+            data-minor={isScoringOrCard(event) ? undefined : ""}
+            className={`flex items-center gap-3 ${isHome ? "" : "flex-row-reverse text-right"}`}
+          >
+            <span className="w-9 shrink-0 rounded-control bg-ground py-0.5 text-center text-[0.68rem] font-bold text-ink-muted tabular-nums">
+              {event.minute}&apos;
+            </span>
+            <EventIcon type={event.type} />
+            <span className="min-w-0 flex-1 truncate text-[0.78rem] text-ink">
+              <EventLabel event={event} lookup={lookup} />
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+
   return (
     <div className="bc-stack pt-4 md:pt-6">
       <LiveRefresh timings={[timing]} renderedAt={now} />
@@ -314,31 +362,15 @@ export default async function MatchPage({ params, searchParams }: Props) {
                   {effective === "scheduled"
                     ? "Events appear here once the match kicks off."
                     : live
-                      ? "Goals and cards appear here as they are recorded."
+                      ? "Goals, cards and key plays appear here as they happen."
                       : effective === "full-time" && !(match.home.score === 0 && match.away.score === 0)
                         ? "The timeline appears once the box score is published."
                         : "No goals or cards recorded."}
                 </p>
+              ) : match.events.some((event) => !isScoringOrCard(event) && !isMarker(event)) ? (
+                <TimelineFilter>{timeline}</TimelineFilter>
               ) : (
-                <ol className="space-y-2.5">
-                  {match.events.map((event, index) => {
-                    const isHome = event.teamSlug === match.home.teamSlug;
-                    return (
-                      <li
-                        key={index}
-                        className={`flex items-center gap-3 ${isHome ? "" : "flex-row-reverse text-right"}`}
-                      >
-                        <span className="w-9 shrink-0 rounded-control bg-ground py-0.5 text-center text-[0.68rem] font-bold text-ink-muted tabular-nums">
-                          {event.minute}&apos;
-                        </span>
-                        <EventIcon type={event.type} />
-                        <span className="min-w-0 flex-1 truncate text-[0.78rem] text-ink">
-                          <EventLabel event={event} lookup={lookup} />
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ol>
+                timeline
               )}
             </div>
           </div>

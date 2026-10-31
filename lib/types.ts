@@ -28,7 +28,23 @@ export type MatchStatus = "scheduled" | "live" | "final" | "postponed" | "cancel
 
 export type MatchStage = "regular" | "quarterfinal" | "semifinal" | "final" | "ncaa";
 
-export type MatchEventType = "goal" | "own-goal" | "penalty" | "yellow" | "red";
+/**
+ * What the timeline lists. Goals and cards come from the box score and the live
+ * feed; the rest (substitutions, shots, fouls, set pieces and half markers)
+ * only from the live feed.
+ */
+export type MatchEventType =
+  | "goal"
+  | "own-goal"
+  | "penalty"
+  | "yellow"
+  | "red"
+  | "sub"
+  | "shot"
+  | "foul"
+  | "corner"
+  | "freekick"
+  | "period";
 
 export type MatchEvent = {
   minute: number;
@@ -37,6 +53,8 @@ export type MatchEvent = {
   teamSlug: string | null;
   playerName: string;
   assistName?: string;
+  /** A few words the type does not carry: "for J. Smith", "missed high", "Half time". */
+  detail?: string;
 };
 
 export type MatchSide = {

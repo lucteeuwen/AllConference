@@ -9,6 +9,8 @@ type Props = {
   children: ReactNode;
   /** Fires the score-change burst. Only used for a match in progress. */
   celebrate?: string | false;
+  /** Picks the panel out from others beside it. */
+  highlight?: boolean;
 };
 
 /**
@@ -19,7 +21,7 @@ type Props = {
  * Wash strength, watermark opacity and rule height all come from tokens
  * shared everywhere this is used.
  */
-export function WashHero({ home, away, children, celebrate }: Props) {
+export function WashHero({ home, away, children, celebrate, highlight = false }: Props) {
   const solo = !away;
 
   const wash = solo
@@ -28,7 +30,11 @@ export function WashHero({ home, away, children, celebrate }: Props) {
        linear-gradient(calc(360deg - var(--wash-angle)), color-mix(in oklab, ${away.primary} calc(100% * var(--wash-strength)), transparent) -10%, transparent 42%)`;
 
   return (
-    <div className="bc-hero bc-chrome relative overflow-hidden rounded-card bg-navy-deep">
+    <div
+      className={`bc-hero bc-chrome relative overflow-hidden rounded-card bg-navy-deep ${
+        highlight ? "ring-2 ring-accent" : ""
+      }`}
+    >
       <div aria-hidden="true" className="absolute inset-0" style={{ background: wash }} />
 
       {/* Speckle, standing in for the video's textured hero. */}

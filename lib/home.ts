@@ -1,5 +1,5 @@
 import { getSeasonData, withDetails } from "@/lib/season-data";
-import { pickHeroMatch } from "@/lib/hero";
+import { pickHeroMatches } from "@/lib/hero";
 import { SCHEDULED_END_MS } from "@/lib/live";
 import { getTopScorers, standingsLines, type ScorerLine, type StandingsLine } from "@/lib/selectors";
 import type { Sport } from "@/lib/sport";
@@ -9,8 +9,11 @@ export type { StandingsLine };
 
 export type HomeData = {
   sport: Sport;
-  /** Only set from 15 minutes before a kickoff until 15 minutes after full time. */
-  hero: Match | null;
+  /**
+   * The matches whose box is up: each from 15 minutes before its kickoff until
+   * 15 minutes after full time. The first is the one to feature.
+   */
+  heroes: Match[];
   /** Server clock at render, so the browser's first paint agrees with it. */
   renderedAt: number;
   /** The whole season in date order; the scoreboard rail picks its own window. */
@@ -34,11 +37,11 @@ export async function getHomeData(sport: Sport, at?: number): Promise<HomeData> 
     .filter((match) => match.status === "scheduled" && Date.parse(match.date) >= now - SCHEDULED_END_MS)
     .slice(0, 6);
 
-  const hero = pickHeroMatch(all, now);
+  const heroes = await Promise.all(pickHeroMatches(all, now).map(withDetails));
 
   return {
     sport,
-    hero: hero ? await withDetails(hero) : null,
+    heroes,
     renderedAt: now,
     matches: all,
     upcoming,

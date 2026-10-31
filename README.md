@@ -88,7 +88,7 @@ npm run dev
 | `npm run scrape` | One full scrape pass, men's then women's |
 | `npm run scrape -- --auto` | A full pass if the last is over 20 min old, else nothing |
 | `npm run scrape -- --auto --live` | What the workflow runs every 30 min: the above, then live mode while a match is on |
-| `npm run scrape -- --live` | Also polls a match that is on every minute, for up to 28 min, from the host's SIDEARM Stats feed |
+| `npm run scrape -- --live` | Also polls a match that is on every 30 seconds, for up to 28 min, from the host's SIDEARM Stats feed |
 | `npm run scrape -- --live-only` | Live mode alone; exits within seconds when nothing is on or about to be |
 | `npm run scrape -- --rosters` | Also refreshes rosters and season stats |
 | `npm run scrape -- --dry-run [--json]` | Reads the feeds and prints what would be written |
@@ -110,23 +110,40 @@ workflow as a harmless backstop.
 **Live mode** (with `--live`) covers a match from 15 minutes before kickoff until
 it goes final, or 150 minutes after kickoff. Schools update their own SIDEARM
 sites only after the game (a week of polling them in October 2026 caught two
-changes, both the final whistle), so live mode never reads them. Each minute it
+changes, both the final whistle), so live mode never reads them. Every 30 seconds it
 reads only the host's SIDEARM Stats feed
 (`sidearmstats.com/<folder>/<msoc|wsoc>/game.json`), which the stat crew updates
-as the game is played, and writes only the columns a game changes (status,
-score, `finished_at`, `started_at`). The feed is used only when its day and teams
-match the match. A run polls for up to 28 minutes, and waits for a match that is
-about to start, so the 30-minute runs cover a whole game; box scores and
-everything else are left to the full pass, which never rolls a match back to an
-earlier status or score than live mode stored. For a member's away game at a
-non-CCIW school, the feed's address comes from that member's schedule feed, read
-once per run.
+as the game is played. The feed is used only when its day and teams match the
+match. From it live mode writes:
+
+- the match's status and score (`finished_at`, `started_at` too);
+- its **timeline**, in `match_events`: goals, cards, substitutions, shots, fouls,
+  corners, free kicks and the half markers. Each play is keyed by the feed's own
+  id (`source_id`), so reading it again changes nothing. The feed only lists its
+  last five plays, so a busy spell can scroll a shot or foul past between two
+  polls; a goal can't go missing that way, because when the feed's score is ahead
+  of the goals stored a placeholder "Goal" is held until the play (or the box
+  score) turns up;
+- the **players' season totals** (`players.goals`, `assists`, `yellow_cards`,
+  `red_cards`, `pk_goals`), moved by exactly the new goals, assists and cards
+  through the `bump_player_stats` function. The daily roster scrape keeps the larger
+  of its own number and the stored one, so it never undoes a live total, and the
+  school's numbers take over once they catch up. Appearances, minutes and keeper
+  stats wait for that scrape.
+
+Standings and team records count a match only once it is final. At full time the
+official box score replaces the live goals and cards (and corrects any player
+total the two disagree on); the substitutions, shots and fouls stay. A run polls
+for up to 28 minutes, and waits for a match that is about to start, so the
+30-minute runs cover a whole game; everything else is left to the full pass, which
+never rolls a match back to an earlier status or score than live mode stored. For
+a member's away game at a non-CCIW school, the feed's address comes from that
+member's schedule feed, read once per run.
 The site does not wait for the scraper to
 show a match as live: from kickoff it counts the minute up itself, and once a
 match should be over it shows "Full time" until the final score arrives.
 `started_at` is the scraper's estimate of when play began, set when it first sees
-the game in play near kickoff and re-anchored from each new goal's minute, and the
-site's clock counts from it.
+the game in play near kickoff, and the site's clock counts from it.
 
 **How often is it scraping?**
 
