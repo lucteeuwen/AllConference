@@ -1,10 +1,6 @@
 import Link from "next/link";
 import { Lockup, SectionHeader } from "@/components/broadcast/Lockup";
-import { WashHero } from "@/components/broadcast/WashHero";
-import { OverlapCard } from "@/components/broadcast/OverlapCard";
-import { Boxscore } from "@/components/broadcast/Boxscore";
-import { Collapsible } from "@/components/broadcast/Collapsible";
-import { HeroScore, HeroStatus, HeroWindow } from "@/components/broadcast/HeroClock";
+import { LiveMatchCard } from "@/components/broadcast/LiveMatchCard";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { ScoreboardRail } from "@/components/broadcast/ScoreboardRail";
 import { ScorersSnippet, StandingsSnippet } from "@/components/broadcast/StandingsSnippet";
@@ -13,8 +9,7 @@ import { LocalTime } from "@/components/LocalTime";
 import { TeamBadge } from "@/components/TeamBadge";
 import { buildRailTiles } from "@/lib/rail";
 import { timingOf } from "@/lib/hero";
-import { effectiveStatus } from "@/lib/live";
-import { competitionLabel, tableView } from "@/lib/selectors";
+import { tableView } from "@/lib/selectors";
 import type { HomeData } from "@/lib/home";
 import { matchHref, SPORT_LABEL, sportHref } from "@/lib/sport";
 
@@ -23,11 +18,6 @@ export function BroadcastHome({ data }: { data: HomeData }) {
 
   // 13 tiles: the six matches before the next one, the next one, and six after.
   const { tiles, centerIndex } = buildRailTiles(data.matches, data.standings, 13, data.renderedAt);
-
-  // Only present around a match: 15 minutes either side of it.
-  const hero = data.hero;
-  const live = hero ? effectiveStatus(timingOf(hero), data.renderedAt).status === "live" : false;
-  const hasScore = hero ? hero.home.score !== null && hero.away.score !== null : false;
 
   return (
     <div className="bc-stack pb-2">
@@ -42,58 +32,19 @@ export function BroadcastHome({ data }: { data: HomeData }) {
         }
       />
 
-      {hero ? (
-        <HeroWindow timing={timingOf(hero)} renderedAt={data.renderedAt}>
-          <section>
-            <WashHero home={hero.home.team} away={hero.away.team} celebrate={live ? hero.id : false}>
-              <p className="bc-label text-[0.8rem] text-white/70 md:text-[0.92rem]">
-                {hero.home.team.name} <span className="text-white/35">@</span> {hero.away.team.name}
-              </p>
-
-              <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                <div className="slide-from-left flex min-w-0 flex-col items-center gap-2">
-                  <TeamBadge team={hero.home.team} size="lg" ring />
-                  <span className="text-center text-[0.75rem] font-semibold break-words text-white">{hero.home.team.name}</span>
-                </div>
-
-                <div className="relative">
-                  <HeroStatus timing={timingOf(hero)} renderedAt={data.renderedAt} />
-
-                  <HeroScore
-                    timing={timingOf(hero)}
-                    homeScore={hero.home.score}
-                    awayScore={hero.away.score}
-                    renderedAt={data.renderedAt}
-                  />
-
-                  <p className="bc-label mt-1.5 text-[0.64rem] text-white/55">
-                    <LocalTime match={hero} format="shortTime" /> · {competitionLabel(hero)}
-                  </p>
-                </div>
-
-                <div className="slide-from-right flex min-w-0 flex-col items-center gap-2">
-                  <TeamBadge team={hero.away.team} size="lg" ring />
-                  <span className="text-center text-[0.75rem] font-semibold break-words text-white">{hero.away.team.name}</span>
-                </div>
-              </div>
-
-              <Link
-                href={matchHref(hero.id)}
-                className="bc-cta bc-label mt-6 inline-flex rounded-control border border-white/25 px-5 py-2 text-[0.72rem] text-white transition hover:bg-white hover:text-navy"
-              >
-                View match
-              </Link>
-            </WashHero>
-
-            {hasScore ? (
-              <OverlapCard>
-                <Collapsible title="Boxscore" storageKey="boxscore-open">
-                  <Boxscore match={hero} standings={data.standings} showHeading={false} />
-                </Collapsible>
-              </OverlapCard>
-            ) : null}
-          </section>
-        </HeroWindow>
+      {data.heroes.length > 0 ? (
+        <div className={data.heroes.length > 1 ? "grid items-start gap-6 md:grid-cols-2" : undefined}>
+          {data.heroes.map((match, index) => (
+            <LiveMatchCard
+              key={match.id}
+              match={match}
+              standings={data.standings}
+              renderedAt={data.renderedAt}
+              featured={data.heroes.length > 1 && index === 0}
+              compact={data.heroes.length > 1}
+            />
+          ))}
+        </div>
       ) : null}
 
       {tiles.length > 0 ? (

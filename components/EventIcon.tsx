@@ -2,11 +2,77 @@ import type { MatchEvent } from "@/lib/types";
 
 export type EventIconType = MatchEvent["type"] | "assist";
 
+/** The small marks for the plays that are not goals or cards: drawn, 16 units square, in the page's muted ink. */
+function PlayIcon({ type }: { type: "sub" | "shot" | "foul" | "corner" | "freekick" | "period" }) {
+  const common = {
+    viewBox: "0 0 16 16",
+    className: "size-3.5 shrink-0 text-ink-muted",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.4,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+  switch (type) {
+    case "sub":
+      // One arrow up for the player on, one down for the player off.
+      return (
+        <svg {...common}>
+          <path d="M5 13V3M2.5 5.5L5 3l2.5 2.5" />
+          <path d="M11 3v10M8.5 10.5L11 13l2.5-2.5" />
+        </svg>
+      );
+    case "shot":
+      // A target.
+      return (
+        <svg {...common}>
+          <circle cx="8" cy="8" r="6.2" />
+          <circle cx="8" cy="8" r="2.6" />
+        </svg>
+      );
+    case "foul":
+      // A whistle.
+      return (
+        <svg {...common}>
+          <circle cx="10" cy="9.5" r="3.3" />
+          <path d="M6.8 7.2H1.8v3h3.4M10 6.2V3.2" />
+        </svg>
+      );
+    case "corner":
+      // The corner flag.
+      return (
+        <svg {...common}>
+          <path d="M4 14V2.5M4 2.5l7 2.6-7 2.6" />
+        </svg>
+      );
+    case "freekick":
+      // The wall: three short strokes.
+      return (
+        <svg {...common}>
+          <path d="M3.5 4v8M8 4v8M12.5 4v8" />
+        </svg>
+      );
+    case "period":
+      // A clock.
+      return (
+        <svg {...common}>
+          <circle cx="8" cy="8" r="6.2" />
+          <path d="M8 4.5V8l2.4 1.6" />
+        </svg>
+      );
+  }
+}
+
 /**
- * A goal, an assist or a card. Drawn rather than set in emoji: emoji depend on
- * a font the machine may not have, and these need to read the same everywhere.
+ * A goal, an assist, a card or another play on the timeline. Drawn rather than
+ * set in emoji: emoji depend on a font the machine may not have, and these need
+ * to read the same everywhere.
  */
 export function EventIcon({ type }: { type: EventIconType }) {
+  if (type === "sub" || type === "shot" || type === "foul" || type === "corner" || type === "freekick" || type === "period") {
+    return <PlayIcon type={type} />;
+  }
   if (type === "yellow" || type === "red") {
     return (
       <span

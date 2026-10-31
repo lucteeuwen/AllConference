@@ -8,13 +8,31 @@ import { PHOTO_BUCKET, resolvePhoto, storedPhotoPath, type StoredPhoto } from ".
 import { parseNationalPoll } from "./rankings";
 import { mergeGames, TeamResolver, type MatchRecord, type TeamRow } from "./merge";
 import { slugify } from "./normalize";
-import { becomesActive, estimatedFinish, isActive, keepAhead, LIVE_COLUMNS, livePatch, type LiveRow } from "./live";
+import {
+  becomesActive,
+  creditsStats,
+  estimatedFinish,
+  eventRows,
+  freshEvents,
+  isActive,
+  keepAhead,
+  LIVE_COLUMNS,
+  livePatch,
+  reconcileGoals,
+  reconcileStats,
+  resolvePlayerId,
+  statDeltas,
+  type EventRow,
+  type LiveRow,
+  type RosterEntry,
+  type StatDelta,
+  type StoredEvent,
+} from "./live";
 import { parseBoxScore, type BoxSide } from "./sidearm/boxscore";
 import { parseRoster, parseStats, rosterUrl, statsUrl } from "./sidearm/roster";
-import { applyLiveStats, LiveStatsReader } from "./sidearm/livestats";
+import { applyLiveStats, feedSwapped, liveEvents, LiveStatsReader, minuteOfClock, type LiveStats } from "./sidearm/livestats";
 import { parseScoreboard, scoreboardUrl, type RawGame, type SidearmGame } from "./sidearm/schedule";
 import { isSplitZoneState } from "./timezones";
-import { startFromEvent } from "@/lib/live";
 import { idPrefix, SPORTS, type Sport } from "@/lib/sport";
 import { buildBracket, type SlotRow } from "./tournament";
 import { resolveWatchLinks, type WatchSource } from "./watch";
@@ -74,6 +92,8 @@ type Context = {
   failedFeeds: Set<string>;
   existing: Map<string, ExistingMatch>;
   playerIds: Set<string>;
+  /** Each team's roster, read once per run when live mode first needs it. */
+  rosters: Map<string, RosterEntry[]>;
   matches: MatchRecord[];
   liveStats: LiveStatsReader;
   /** Each match's live stats link, from a full pass or a member's feed read once in live mode. */
@@ -374,16 +394,21 @@ async function syncLogos(ctx: Context, sources: Map<string, Set<string>>): Promi
   }
 }
 
+/** The plays a box score lists. Live mode also stores others (substitutions, shots…) that it leaves alone. */
+const BOX_EVENT_TYPES = ["goal", "own-goal", "penalty", "yellow", "red"];
+
+/** A box score that still has no goals for a game that had some is likely just not posted yet. */
+const BOX_SCORE_GRACE_MS = 3 * 24 * 60 * 60_000;
+
 /**
- * `only` limits it to those matches (live mode). `anchor` lets a goal seen for
- * the first time re-anchor the match's start time, which is only sound when the
- * poll is close behind the goal, so live mode alone sets it.
+ * The final box score is the official record of a match's goals and cards. It
+ * replaces what live mode stored of those (and corrects the players' totals
+ * for any play live mode credited differently). A match still on is left to
+ * live mode, since the school posts its box score after the game.
  */
-async function syncBoxScores(ctx: Context, limit = 80, only?: Set<string>, anchor = false): Promise<void> {
+async function syncBoxScores(ctx: Context, limit = 80): Promise<void> {
   const due = ctx.matches.filter((match) => {
-    if (only && !only.has(match.id)) return false;
     if (!match.boxscore_url || !match.home_slug || !match.away_slug) return false;
-    if (match.status === "live") return true;
     return match.status === "final" && !ctx.existing.get(match.id)?.events_scraped;
   });
 
@@ -438,25 +463,26 @@ async function syncBoxScores(ctx: Context, limit = 80, only?: Set<string>, ancho
         };
       });
 
-      // Compared before the rewrite: a later minute than any stored is a goal
-      // or card we have only just seen.
-      let startedAt: string | null = null;
-      if (anchor && match.status === "live") {
-        const prior = await must<{ minute: number }[]>(
-          ctx.db.from("match_events").select("minute").eq("match_id", match.id),
-          "prior events",
-        );
-        const latest = Math.max(0, ...box.events.map((event) => event.minute));
-        const known = Math.max(0, ...prior.map((row) => row.minute));
-        if (latest > known) startedAt = startFromEvent(latest, Date.now(), match.date, LIVE.pollMs / 2);
+      // A game with goals and a box score that lists none: it is not posted
+      // yet. Keep what live mode stored and look again next pass, for a while.
+      const scored = (match.home_score ?? 0) + (match.away_score ?? 0) > 0;
+      const recent = Date.now() - Date.parse(match.date) < BOX_SCORE_GRACE_MS;
+      if (events.length === 0 && scored && recent) {
+        note(ctx, `box score ${match.id}: no goals or cards listed yet, keeping the stored plays`);
+        continue;
       }
 
-      await must(ctx.db.from("match_events").delete().eq("match_id", match.id), "clear events");
+      if (events.length > 0) {
+        await reconcileLiveStats(ctx, match.id, events);
+        await must(
+          ctx.db.from("match_events").delete().eq("match_id", match.id).in("type", BOX_EVENT_TYPES),
+          "clear events",
+        );
+        await must(ctx.db.from("match_events").insert(events), "insert events");
+      }
       await must(ctx.db.from("match_lineups").delete().eq("match_id", match.id), "clear lineups");
-      if (events.length) await must(ctx.db.from("match_events").insert(events), "insert events");
       if (lineups.length) await must(ctx.db.from("match_lineups").insert(lineups), "insert lineups");
 
-      const done = match.status === "final";
       await must(
         ctx.db
           .from("matches")
@@ -464,14 +490,13 @@ async function syncBoxScores(ctx: Context, limit = 80, only?: Set<string>, ancho
             attendance: box.attendance,
             referee: box.referee,
             ...(box.stadium ? { venue: box.stadium } : {}),
-            ...(startedAt ? { started_at: startedAt } : {}),
-            events_scraped: done,
+            events_scraped: true,
           })
           .eq("id", match.id),
         "save box score",
       );
       const existing = ctx.existing.get(match.id);
-      if (existing) existing.events_scraped = done;
+      if (existing) existing.events_scraped = true;
     } catch (error) {
       note(ctx, `WARN box score ${match.id}: ${(error as Error).message}`);
     }
@@ -517,6 +542,21 @@ async function backfillPositions(ctx: Context): Promise<void> {
   note(ctx, `backfilled position for ${found.size} players from box-score lineups`);
 }
 
+/** The totals live mode moves, as stored. */
+type StoredTotals = {
+  goals: number | null;
+  assists: number | null;
+  yellow_cards: number | null;
+  red_cards: number | null;
+  pk_goals: number | null;
+};
+
+/** The larger of two season totals, null only when neither is known. */
+function atLeast(school: number | null | undefined, stored: number | null | undefined): number | null {
+  if (school == null && stored == null) return null;
+  return Math.max(school ?? 0, stored ?? 0);
+}
+
 async function syncRosters(ctx: Context): Promise<void> {
   for (const team of ctx.conference) {
     if (!team.sidearm_base_url) continue;
@@ -535,10 +575,10 @@ async function syncRosters(ctx: Context): Promise<void> {
       const base = team.sidearm_base_url;
       const absolute = (path: string | null) => (path ? new URL(path, base).href : null);
 
-      const stored = await must<(StoredPhoto & { id: string })[]>(
+      const stored = await must<(StoredPhoto & { id: string } & StoredTotals)[]>(
         ctx.db
           .from("players")
-          .select("id, photo_url, photo_source_url")
+          .select("id, photo_url, photo_source_url, goals, assists, yellow_cards, red_cards, pk_goals")
           .eq("sport", ctx.sport)
           .eq("season", SEASON)
           .eq("team_slug", team.slug),
@@ -576,8 +616,10 @@ async function syncRosters(ctx: Context): Promise<void> {
           height: player.height,
           gp: line?.gp ?? 0,
           gs: line?.gs ?? 0,
-          goals: line?.goals ?? 0,
-          assists: line?.assists ?? 0,
+          // Live mode adds a goal the moment it happens, ahead of the school's
+          // stats page. Season totals never fall, so the larger of the two wins.
+          goals: atLeast(line?.goals, storedById.get(id)?.goals) ?? 0,
+          assists: atLeast(line?.assists, storedById.get(id)?.assists) ?? 0,
           ...photos.get(id),
           bio_url: absolute(player.bioPath),
           position_long: player.positionLong || null,
@@ -590,10 +632,10 @@ async function syncRosters(ctx: Context): Promise<void> {
           shots: line?.shots ?? null,
           shots_on_goal: line?.shotsOnGoal ?? null,
           game_winners: line?.gameWinners ?? null,
-          pk_goals: line?.pkGoals ?? null,
+          pk_goals: atLeast(line?.pkGoals, storedById.get(id)?.pk_goals),
           pk_attempts: line?.pkAttempts ?? null,
-          yellow_cards: line?.yellow ?? null,
-          red_cards: line?.red ?? null,
+          yellow_cards: atLeast(line?.yellow, storedById.get(id)?.yellow_cards),
+          red_cards: atLeast(line?.red, storedById.get(id)?.red_cards),
           gk_minutes: line?.keeper?.minutes ?? null,
           goals_against: line?.keeper?.goalsAgainst ?? null,
           saves: line?.keeper?.saves ?? null,
@@ -669,6 +711,134 @@ async function statsUrlOf(ctx: Context, row: LiveRow): Promise<string | null> {
   return ctx.statsUrls.get(row.id) ?? null;
 }
 
+/** Adds `delta` to players' season totals, one atomic statement per player. */
+async function bumpStats(ctx: Context, deltas: Map<string, StatDelta>): Promise<void> {
+  for (const [id, delta] of deltas) {
+    await must(
+      ctx.db.rpc("bump_player_stats", {
+        p_id: id,
+        p_goals: delta.goals,
+        p_assists: delta.assists,
+        p_yellow: delta.yellow,
+        p_red: delta.red,
+        p_pk: delta.pk,
+      }),
+      "bump player stats",
+    );
+  }
+}
+
+/**
+ * About to replace a match's live goals and cards with the box score's: move
+ * the players' totals by whatever the two disagree on, so a play live mode
+ * credited to the wrong player is corrected instead of counted twice. Does
+ * nothing for a match live mode never counted, whose totals the school's own
+ * stats already hold.
+ */
+async function reconcileLiveStats(
+  ctx: Context,
+  matchId: string,
+  box: Pick<EventRow, "type" | "player_id" | "assist_player_id">[],
+): Promise<void> {
+  const counted = await must<Pick<EventRow, "type" | "player_id" | "assist_player_id">[]>(
+    ctx.db
+      .from("match_events")
+      .select("type, player_id, assist_player_id")
+      .eq("match_id", matchId)
+      .eq("counted", true),
+    "counted events",
+  );
+  if (counted.length === 0) return;
+  const deltas = reconcileStats(counted, box);
+  await bumpStats(ctx, deltas);
+  if (deltas.size) note(ctx, `box score ${matchId}: corrected totals for ${deltas.size} players`);
+}
+
+/** A team's roster, read once per run. */
+async function rosterOf(ctx: Context, teamSlug: string): Promise<RosterEntry[]> {
+  const known = ctx.rosters.get(teamSlug);
+  if (known) return known;
+  const roster = await must<RosterEntry[]>(
+    ctx.db
+      .from("players")
+      .select("id, number, name")
+      .eq("sport", ctx.sport)
+      .eq("season", SEASON)
+      .eq("team_slug", teamSlug),
+    "load roster",
+  );
+  ctx.rosters.set(teamSlug, roster);
+  return roster;
+}
+
+const SCORING_LOG = new Set(["goal", "penalty", "own-goal", "yellow", "red"]);
+
+/**
+ * Stores the plays a poll saw that are not stored yet and moves the players'
+ * totals for the goals, assists and cards among them. Plays are keyed by the
+ * feed's own id, so reading the same ones again changes nothing; a goal the
+ * score shows but no play named is held as a placeholder until its play (or the
+ * box score) turns up.
+ */
+async function syncLiveEvents(
+  ctx: Context,
+  row: LiveRow,
+  score: { home: number | null; away: number | null },
+  stats: LiveStats,
+  swapped: boolean,
+): Promise<void> {
+  if (!stats.started) return;
+  const teams = [row.home_slug, row.away_slug].filter((slug) => slug !== null);
+  const rosters = new Map(await Promise.all(teams.map(async (slug) => [slug, await rosterOf(ctx, slug)] as const)));
+
+  const rows = eventRows(row, liveEvents(stats, swapped), (team, player) =>
+    resolvePlayerId(rosters.get(team) ?? [], playerId(ctx.sport, team, player.name), player),
+  );
+  const stored = await must<StoredEvent[]>(
+    ctx.db
+      .from("match_events")
+      .select("type, team_slug, minute, player_name, player_id, assist_player_id, source_id, counted")
+      .eq("match_id", row.id),
+    "stored events",
+  );
+
+  const fresh = freshEvents(stored, rows);
+  // A goal named by no play this poll is noticed about now.
+  const latest = Math.max(0, ...stats.plays.map((play) => play.clockSeconds));
+  const { drop, add } = reconcileGoals(row, stored, fresh, score, minuteOfClock(latest));
+  if (fresh.length === 0 && drop.length === 0 && add.length === 0) return;
+
+  if (drop.length) {
+    await must(ctx.db.from("match_events").delete().eq("match_id", row.id).in("source_id", drop), "drop placeholders");
+  }
+  // The unique (match_id, source_id) index makes a rival run's insert of the same play a no-op.
+  const inserted = await must<{ source_id: string }[]>(
+    ctx.db
+      .from("match_events")
+      .upsert([...fresh, ...add], { onConflict: "match_id,source_id", ignoreDuplicates: true })
+      .select("source_id"),
+    "insert live events",
+  );
+  const added = new Set(inserted.map((event) => event.source_id));
+  const newRows = fresh.filter((event) => event.source_id && added.has(event.source_id));
+
+  await bumpStats(ctx, statDeltas(newRows));
+  const credited = newRows.filter(creditsStats).map((event) => event.source_id as string);
+  if (credited.length) {
+    await must(
+      ctx.db.from("match_events").update({ counted: true }).eq("match_id", row.id).in("source_id", credited),
+      "mark counted",
+    );
+  }
+
+  for (const event of newRows.filter((event) => SCORING_LOG.has(event.type))) {
+    note(ctx, `live ${row.id}: +${event.type} ${event.player_name} ${event.minute}'`);
+  }
+  const others = newRows.filter((event) => !SCORING_LOG.has(event.type)).length;
+  if (others) note(ctx, `live ${row.id}: +${others} plays`);
+  if (add.length) note(ctx, `live ${row.id}: +${add.length} goals the feed scored but did not list`);
+}
+
 /**
  * One live poll. Reads only the active matches' live stats feeds, then writes
  * only what changed on those matches. Returns whether any feed answered, or
@@ -686,24 +856,39 @@ async function pollLive(ctx: Context, active: LiveRow[]): Promise<boolean> {
   const now = Date.now();
   for (const row of active) {
     let record: LiveRow | null = null;
+    let matched: { stats: LiveStats; swapped: boolean } | null = null;
     for (const folder of folders.get(row.id) ?? []) {
       const feed = stats.get(folder);
       record = feed ? applyLiveStats(row, feed, resolver) : null;
-      if (record) break;
+      if (feed && record) {
+        matched = { stats: feed, swapped: feedSwapped(row, feed, resolver) === true };
+        break;
+      }
     }
     const patch = record && livePatch(row, record, now);
-    if (!patch) continue;
-    await must(
-      ctx.db
-        .from("matches")
-        .update({ ...patch, updated_at: new Date(now).toISOString() })
-        .eq("id", row.id),
-      "live update",
-    );
-    const status = patch.status ?? row.status;
-    const home = patch.home_score ?? row.home_score;
-    const away = patch.away_score ?? row.away_score;
-    note(ctx, `live ${row.id}: ${status} ${home ?? "-"}-${away ?? "-"}`);
+    if (patch) {
+      await must(
+        ctx.db
+          .from("matches")
+          .update({ ...patch, updated_at: new Date(now).toISOString() })
+          .eq("id", row.id),
+        "live update",
+      );
+      const status = patch.status ?? row.status;
+      const home = patch.home_score ?? row.home_score;
+      const away = patch.away_score ?? row.away_score;
+      note(ctx, `live ${row.id}: ${status} ${home ?? "-"}-${away ?? "-"}`);
+    }
+    if (matched) {
+      // The score as stored now, which never runs behind what the feed once said.
+      const score = { home: patch?.home_score ?? row.home_score, away: patch?.away_score ?? row.away_score };
+      try {
+        await syncLiveEvents(ctx, row, score, matched.stats, matched.swapped);
+      } catch (error) {
+        // The score is already saved; plays are retried on the next poll.
+        note(ctx, `WARN live plays ${row.id}: ${(error as Error).message}`);
+      }
+    }
   }
 
   return stats.size === 0 || [...stats.values()].some(Boolean);
@@ -855,6 +1040,7 @@ async function main() {
       failedFeeds: new Set(),
       existing: new Map(),
       playerIds: new Set(),
+      rosters: new Map(),
       matches: [],
       liveStats: new LiveStatsReader(sport, (message) => note(ctx, message)),
       statsUrls: new Map(),

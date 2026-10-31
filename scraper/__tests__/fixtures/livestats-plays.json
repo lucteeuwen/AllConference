@@ -1,0 +1,355 @@
+{
+  "Game": {
+    "Type": "SoccerGame",
+    "HasStarted": true,
+    "IsComplete": true,
+    "Date": "10/10/2026",
+    "Period": 2,
+    "ClockSeconds": 5400,
+    "Rules": {
+      "PeriodMinutes": 45,
+      "PeriodName": "Half",
+      "ClockDirection": "Up"
+    },
+    "HomeTeam": {
+      "Id": "WHE",
+      "Name": "Wheaton",
+      "Score": 1
+    },
+    "VisitingTeam": {
+      "Id": "CAR",
+      "Name": "Carthage",
+      "Score": 1
+    },
+    "LastPlays": [
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": null,
+        "Narrative": "Game end",
+        "Context": "",
+        "Id": "91+A0000091",
+        "Type": "GAME",
+        "Action": null,
+        "Period": 2,
+        "ClockSeconds": 5400,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": null,
+        "Narrative": "Period end",
+        "Context": "",
+        "Id": "90+A0000090",
+        "Type": "PRD",
+        "Action": null,
+        "Period": 2,
+        "ClockSeconds": 5400,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": {
+          "Team": "VisitingTeam",
+          "FirstName": "Alaina",
+          "LastName": "Clark",
+          "UniformNumber": "10",
+          "PersonId": "0"
+        },
+        "InvolvedPlayers": [],
+        "Team": "VisitingTeam",
+        "Narrative": "Red card on CAR Clark,Alaina",
+        "Context": "",
+        "Id": "80+A0000080",
+        "Type": "RC",
+        "Action": null,
+        "Period": 2,
+        "ClockSeconds": 5325,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": {
+          "Team": "VisitingTeam",
+          "FirstName": "Iskander",
+          "LastName": "Sharipov",
+          "UniformNumber": "10",
+          "PersonId": "0"
+        },
+        "InvolvedPlayers": [],
+        "Team": "VisitingTeam",
+        "Narrative": "Shot by CAR Sharipov,Iskander, low left, GOAL",
+        "Context": "",
+        "Id": "72+A0000072",
+        "Type": "GOAL",
+        "Action": null,
+        "Period": 2,
+        "ClockSeconds": 4359,
+        "Coordinate": null,
+        "Qualifiers": [
+          "goalmouth:lowleft",
+          "from:rightfoot",
+          "noassist"
+        ],
+        "Score": {
+          "HomeTeam": 1,
+          "VisitingTeam": 1
+        }
+      },
+      {
+        "Player": {
+          "Team": "VisitingTeam",
+          "FirstName": "Matthew",
+          "LastName": "Neumann",
+          "UniformNumber": "26",
+          "PersonId": "0"
+        },
+        "InvolvedPlayers": [
+          {
+            "Team": "VisitingTeam",
+            "FirstName": "Nathan",
+            "LastName": "Patzer",
+            "UniformNumber": "3",
+            "PersonId": "0"
+          }
+        ],
+        "Team": "VisitingTeam",
+        "Narrative": "Substitution CAR Neumann,Matthew OUT, Substitution CAR Patzer,Nathan IN",
+        "Context": "",
+        "Id": "60+A0000060",
+        "Type": "SUB",
+        "Action": null,
+        "Period": 2,
+        "ClockSeconds": 3359,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": "VisitingTeam",
+        "Narrative": "Kickoff by Carthage",
+        "Context": "",
+        "Id": "45+A0000045",
+        "Type": "KICKOFF",
+        "Action": null,
+        "Period": 2,
+        "ClockSeconds": 2700,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": null,
+        "Narrative": "Period end",
+        "Context": "",
+        "Id": "44+A0000044",
+        "Type": "PRD",
+        "Action": null,
+        "Period": 1,
+        "ClockSeconds": 2700,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": {
+          "Team": "HomeTeam",
+          "FirstName": "Trey",
+          "LastName": "Zakeri",
+          "UniformNumber": "24",
+          "PersonId": "0"
+        },
+        "InvolvedPlayers": [],
+        "Team": "HomeTeam",
+        "Narrative": "Yellow card on WHE Zakeri,Trey",
+        "Context": "",
+        "Id": "40+A0000040",
+        "Type": "YC",
+        "Action": null,
+        "Period": 1,
+        "ClockSeconds": 2210,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": "VisitingTeam",
+        "Narrative": "Kickoff by Carthage",
+        "Context": "",
+        "Id": "31+A0000031",
+        "Type": "KICKOFF",
+        "Action": null,
+        "Period": 1,
+        "ClockSeconds": 1520,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": {
+          "Team": "HomeTeam",
+          "FirstName": "Matthew",
+          "LastName": "Perchik",
+          "UniformNumber": "19",
+          "PersonId": "0"
+        },
+        "InvolvedPlayers": [
+          {
+            "Team": "HomeTeam",
+            "FirstName": "Ben",
+            "LastName": "Lyons",
+            "UniformNumber": "7",
+            "PersonId": "0"
+          }
+        ],
+        "Team": "HomeTeam",
+        "Narrative": "Shot by WHE Perchik,Matthew, high left, GOAL; Assist by WHE Lyons,Ben",
+        "Context": "",
+        "Id": "30+A0000030",
+        "Type": "GOAL",
+        "Action": null,
+        "Period": 1,
+        "ClockSeconds": 1488,
+        "Coordinate": null,
+        "Qualifiers": [
+          "goalmouth:highleft",
+          "from:leftfoot"
+        ],
+        "Score": {
+          "HomeTeam": 1,
+          "VisitingTeam": 0
+        }
+      },
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": "VisitingTeam",
+        "Narrative": "Goal kick by Carthage",
+        "Context": "",
+        "Id": "23+A0000023",
+        "Type": "GOALKICK",
+        "Action": null,
+        "Period": 1,
+        "ClockSeconds": 790,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": "HomeTeam",
+        "Narrative": "Throw in by Wheaton (IL)",
+        "Context": "",
+        "Id": "20+A0000020",
+        "Type": "THROWIN",
+        "Action": null,
+        "Period": 1,
+        "ClockSeconds": 730,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": "VisitingTeam",
+        "Narrative": "Free kick by Carthage",
+        "Context": "",
+        "Id": "16+A0000016",
+        "Type": "FREEKICK",
+        "Action": null,
+        "Period": 1,
+        "ClockSeconds": 701,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": "HomeTeam",
+        "Narrative": "Corner kick by Wheaton (IL)",
+        "Context": "",
+        "Id": "15+A0000015",
+        "Type": "CORNER",
+        "Action": null,
+        "Period": 1,
+        "ClockSeconds": 655,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": {
+          "Team": "VisitingTeam",
+          "FirstName": "Ashley",
+          "LastName": "Gorder",
+          "UniformNumber": "4",
+          "PersonId": "0"
+        },
+        "InvolvedPlayers": [],
+        "Team": "VisitingTeam",
+        "Narrative": "Foul on CAR Gorder,Ashley",
+        "Context": "",
+        "Id": "14+A0000014",
+        "Type": "FOUL",
+        "Action": null,
+        "Period": 1,
+        "ClockSeconds": 640,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      },
+      {
+        "Player": {
+          "Team": "HomeTeam",
+          "FirstName": "Silas",
+          "LastName": "Wise",
+          "UniformNumber": "9",
+          "PersonId": "0"
+        },
+        "InvolvedPlayers": [],
+        "Team": "HomeTeam",
+        "Narrative": "Shot by WHE Wise,Silas, MISSED high",
+        "Context": "",
+        "Id": "9+A0000009",
+        "Type": "SHOT",
+        "Action": null,
+        "Period": 1,
+        "ClockSeconds": 412,
+        "Coordinate": null,
+        "Qualifiers": [
+          "goalmouth:outhigh"
+        ],
+        "Score": null
+      },
+      {
+        "Player": null,
+        "InvolvedPlayers": [],
+        "Team": "HomeTeam",
+        "Narrative": "Kickoff by Wheaton (IL)",
+        "Context": "",
+        "Id": "1+A0000001",
+        "Type": "KICKOFF",
+        "Action": null,
+        "Period": 1,
+        "ClockSeconds": 0,
+        "Coordinate": null,
+        "Qualifiers": null,
+        "Score": null
+      }
+    ]
+  }
+}

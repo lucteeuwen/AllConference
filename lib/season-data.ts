@@ -269,22 +269,33 @@ export const getSeasonData = cache(async (sport: Sport): Promise<SeasonData> => 
   };
 });
 
+type EventData = {
+  minute: number;
+  type: MatchEvent["type"];
+  team_slug: string | null;
+  player_name: string;
+  assist_name: string | null;
+  detail?: string | null;
+};
+
 /** Timeline and lineups for one match. */
 export const getMatchDetails = cache(
   async (matchId: string): Promise<{ events: MatchEvent[]; lineups?: { home: Lineup; away: Lineup } }> => {
     const db = createServerClient();
-    const [events, lineups] = await Promise.all([
-      db
-        .from("match_events")
-        .select("minute, type, team_slug, player_name, assist_name, sort")
-        .eq("match_id", matchId)
-        .order("sort"),
+    // Live plays arrive in order of the minute they happened in; within a minute
+    // the feed's own running number keeps them straight. `detail` is read with a
+    // fallback so the page still works before the migration that adds it.
+    const readEvents = (columns: string) =>
+      db.from("match_events").select(columns).eq("match_id", matchId).order("minute").order("sort");
+    const [withDetail, lineups] = await Promise.all([
+      readEvents("minute, type, team_slug, player_name, assist_name, detail, sort"),
       db
         .from("match_lineups")
         .select("side, starter, number, player_name, position, sort")
         .eq("match_id", matchId)
         .order("sort"),
     ]);
+    const events = withDetail.error ? await readEvents("minute, type, team_slug, player_name, assist_name, sort") : withDetail;
     if (events.error) throw new Error(events.error.message);
     if (lineups.error) throw new Error(lineups.error.message);
 
@@ -302,12 +313,13 @@ export const getMatchDetails = cache(
     };
 
     return {
-      events: (events.data ?? []).map((row) => ({
+      events: ((events.data ?? []) as unknown as EventData[]).map((row) => ({
         minute: row.minute,
         type: row.type,
         teamSlug: row.team_slug,
         playerName: row.player_name,
         assistName: row.assist_name ?? undefined,
+        detail: row.detail ?? undefined,
       })),
       lineups: lineups.data && lineups.data.length > 0 ? { home: lineup("home"), away: lineup("away") } : undefined,
     };
@@ -452,6 +464,8 @@ export const getPlayerDetails = cache(
           .from("match_events")
           .select("match_id, minute, type, team_slug, player_name, player_id, assist_name, assist_player_id")
           .eq("team_slug", teamSlug)
+          // A game log counts goals and cards; the shots and fouls live mode adds would only pad the read.
+          .in("type", ["goal", "own-goal", "penalty", "yellow", "red"])
           .like("match_id", matchIds)
           .order("id")
           .range(from, to),

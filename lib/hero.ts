@@ -57,19 +57,27 @@ export function timingOf(match: Match): HeroTiming {
   };
 }
 
-/** The match the box should show right now, or null to hide it. */
+/**
+ * Every match whose box is up right now, the one to feature first. Several
+ * matches can overlap (a Saturday has four kickoffs), so each gets its own box.
+ */
+export function pickHeroMatches(matches: Match[], now: number): Match[] {
+  return matches
+    .map((match) => ({ match, phase: heroPhase(timingOf(match), now) }))
+    .filter(({ match, phase }) => phase !== "hidden" && match.home.teamSlug && match.away.teamSlug)
+    .sort(
+      (a, b) =>
+        PRIORITY[a.phase] - PRIORITY[b.phase] ||
+        // Soonest kickoff first, but the latest finish first.
+        (a.phase === "post"
+          ? b.match.date.localeCompare(a.match.date)
+          : a.match.date.localeCompare(b.match.date)) ||
+        a.match.id.localeCompare(b.match.id),
+    )
+    .map(({ match }) => match);
+}
+
+/** The match the box should show first, or null to hide it. */
 export function pickHeroMatch(matches: Match[], now: number): Match | null {
-  return (
-    matches
-      .map((match) => ({ match, phase: heroPhase(timingOf(match), now) }))
-      .filter(({ match, phase }) => phase !== "hidden" && match.home.teamSlug && match.away.teamSlug)
-      .sort(
-        (a, b) =>
-          PRIORITY[a.phase] - PRIORITY[b.phase] ||
-          // Soonest kickoff first, but the latest finish first.
-          (a.phase === "post"
-            ? b.match.date.localeCompare(a.match.date)
-            : a.match.date.localeCompare(b.match.date)),
-      )[0]?.match ?? null
-  );
+  return pickHeroMatches(matches, now)[0] ?? null;
 }

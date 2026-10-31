@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { becomesActive, isActive, keepAhead, livePatch, type LiveRow } from "../live";
+import {
+  becomesActive,
+  eventRows,
+  freshEvents,
+  isActive,
+  keepAhead,
+  livePatch,
+  reconcileGoals,
+  reconcileStats,
+  resolvePlayerId,
+  statDeltas,
+  UNKNOWN_PLAYER,
+  type LiveRow,
+  type StoredEvent,
+} from "../live";
+import type { LiveEvent } from "../sidearm/livestats";
 import type { MatchRecord } from "../merge";
 import { parseScoreboard, type SidearmGame } from "../sidearm/schedule";
 
@@ -161,5 +176,177 @@ describe("keepAhead", () => {
   it("does not hold back a postponement", () => {
     const postponed = match({ status: "postponed" });
     expect(keepAhead(postponed, { status: "live", home_score: 0, away_score: 0 })).toBe(postponed);
+  });
+});
+
+describe("live plays", () => {
+  const match = { id: "2026-09-20-a-b", home_slug: "a", away_slug: "b" };
+  const roster = [
+    { id: "w-a-matthew-perchik", number: 19, name: "Matthew Perchik" },
+    { id: "w-a-ben-lyons", number: 7, name: "Ben Lyons" },
+    { id: "w-b-iskander-sharipov", number: 10, name: "Iskander Sharipov" },
+  ];
+
+  const play = (extra: Partial<LiveEvent> = {}): LiveEvent => ({
+    sourceId: "30+AAAA",
+    sort: 30,
+    minute: 25,
+    type: "goal",
+    side: "home",
+    player: { name: "Matthew Perchik", number: 19 },
+    assists: [{ name: "Ben Lyons", number: 7 }],
+    detail: null,
+    ...extra,
+  });
+  const resolve = (team: string, player: { name: string; number: number | null }) =>
+    resolvePlayerId(roster.filter((entry) => entry.id.startsWith(`w-${team}-`)), `w-${team}-${player.name.toLowerCase().replace(/ /g, "-")}`, player);
+  const rows = (...events: Partial<LiveEvent>[]) => eventRows(match, events.map(play), resolve);
+  const stored = (extra: Partial<StoredEvent> = {}): StoredEvent => ({
+    type: "goal",
+    team_slug: "a",
+    minute: 25,
+    player_name: "Matthew Perchik",
+    player_id: "w-a-matthew-perchik",
+    assist_player_id: null,
+    source_id: "30+AAAA",
+    counted: true,
+    ...extra,
+  });
+
+  describe("resolvePlayerId", () => {
+    it("uses the id a name makes, else a jersey number whose surname agrees", () => {
+      expect(resolvePlayerId(roster, "w-a-matthew-perchik", { name: "Matthew Perchik", number: 19 })).toBe("w-a-matthew-perchik");
+      expect(resolvePlayerId(roster, "w-a-matt-perchik", { name: "Matt Perchik", number: 19 })).toBe("w-a-matthew-perchik");
+    });
+
+    it("will not guess from a number alone", () => {
+      expect(resolvePlayerId(roster, "w-a-someone", { name: "Someone Else", number: 19 })).toBeNull();
+      expect(resolvePlayerId(roster, "w-a-matt-perchik", { name: "Matt Perchik", number: null })).toBeNull();
+      expect(resolvePlayerId(roster, "x", null)).toBeNull();
+    });
+  });
+
+  describe("eventRows", () => {
+    it("files a play under the team of its side and links the scorer and assister", () => {
+      expect(rows({})[0]).toMatchObject({
+        match_id: match.id,
+        team_slug: "a",
+        player_name: "Matthew Perchik",
+        player_id: "w-a-matthew-perchik",
+        assist_name: "Ben Lyons",
+        assist_player_id: "w-a-ben-lyons",
+        source_id: "30+AAAA",
+        counted: false,
+      });
+    });
+
+    it("leaves a marker with no team, and an own goal with no credited scorer", () => {
+      expect(rows({ type: "period", side: null, player: null, assists: [], detail: "Half time" })[0]).toMatchObject({
+        team_slug: null,
+        player_name: UNKNOWN_PLAYER,
+        detail: "Half time",
+      });
+      expect(rows({ type: "own-goal", assists: [] })[0].player_id).toBeNull();
+    });
+
+    it("writes a shared assist the way a box score does", () => {
+      const [row] = rows({ assists: [{ name: "Ben Lyons", number: 7 }, { name: "Noah Cameron", number: 3 }] });
+      expect(row.assist_name).toBe("Ben Lyons , Noah Cameron");
+    });
+  });
+
+  describe("freshEvents", () => {
+    it("drops plays already stored, by the feed's id", () => {
+      expect(freshEvents([stored()], rows({}, { sourceId: "31+BBBB", sort: 31, type: "shot", assists: [] }))).toHaveLength(1);
+      expect(freshEvents([stored()], rows({}))).toHaveLength(0);
+    });
+
+    it("does not store a goal twice when an edit changed its id", () => {
+      expect(freshEvents([stored()], rows({ sourceId: "30+CCCC" }))).toHaveLength(0);
+    });
+
+    it("lets two shots in one minute both through", () => {
+      const shot = { type: "shot" as const, assists: [] };
+      expect(freshEvents([], rows({ ...shot, sourceId: "1+A" }, { ...shot, sourceId: "2+B" }))).toHaveLength(2);
+    });
+  });
+
+  describe("reconcileGoals", () => {
+    const withScore = (home: number | null, away: number | null) => ({ home, away });
+
+    it("adds nothing when the plays account for the score", () => {
+      expect(reconcileGoals(match, [stored()], [], withScore(1, 0), 30)).toEqual({ drop: [], add: [] });
+    });
+
+    it("holds a placeholder for a goal the feed scored but did not list", () => {
+      const { add } = reconcileGoals(match, [stored()], [], withScore(1, 2), 63);
+      expect(add).toHaveLength(2);
+      expect(add[0]).toMatchObject({
+        type: "goal",
+        team_slug: "b",
+        minute: 63,
+        player_name: UNKNOWN_PLAYER,
+        source_id: "gap-away-1",
+        counted: false,
+      });
+      expect(add[1].source_id).toBe("gap-away-2");
+    });
+
+    it("drops a placeholder once the play that names the goal arrives", () => {
+      const placeholder = stored({ player_name: UNKNOWN_PLAYER, player_id: null, source_id: "gap-home-1", counted: false });
+      const named = rows({})[0];
+      const { drop, add } = reconcileGoals(match, [placeholder], [named], withScore(1, 0), 30);
+      expect(drop).toEqual(["gap-home-1"]);
+      expect(add).toEqual([]);
+    });
+
+    it("counts an own goal for the side that benefited", () => {
+      const own = rows({ type: "own-goal", side: "away", player: { name: "Iskander Sharipov", number: 10 }, assists: [] });
+      expect(reconcileGoals(match, [], own, withScore(1, 0), 30).add).toEqual([]);
+      expect(reconcileGoals(match, [], own, withScore(0, 1), 30).add).toHaveLength(1);
+    });
+
+    it("does nothing without a score", () => {
+      expect(reconcileGoals(match, [], [], withScore(null, null), 30)).toEqual({ drop: [], add: [] });
+    });
+  });
+
+  describe("statDeltas", () => {
+    it("credits goals, penalties, assists and cards to known players", () => {
+      const deltas = statDeltas([
+        ...rows({}, { type: "penalty", assists: [], sourceId: "2+A" }, { type: "yellow", assists: [], sourceId: "3+A" }),
+        ...rows({ type: "red", side: "away", player: { name: "Iskander Sharipov", number: 10 }, assists: [], sourceId: "4+A" }),
+      ]);
+      expect(deltas.get("w-a-matthew-perchik")).toEqual({ goals: 2, assists: 0, yellow: 1, red: 0, pk: 1 });
+      expect(deltas.get("w-a-ben-lyons")).toEqual({ goals: 0, assists: 1, yellow: 0, red: 0, pk: 0 });
+      expect(deltas.get("w-b-iskander-sharipov")).toMatchObject({ red: 1 });
+    });
+
+    it("ignores plays that are not goals or cards, own goals, and players we cannot place", () => {
+      const deltas = statDeltas([
+        ...rows({ type: "shot", assists: [], sourceId: "1+A" }, { type: "sub", assists: [], sourceId: "2+A" }, { type: "own-goal", sourceId: "3+A" }),
+        ...rows({ player: { name: "Walk On", number: 99 }, assists: [], sourceId: "4+A" }),
+      ]);
+      expect(deltas.size).toBe(0);
+    });
+  });
+
+  describe("reconcileStats", () => {
+    const goal = (player: string | null) => ({ type: "goal" as const, player_id: player, assist_player_id: null });
+
+    it("moves a credit to the player the box score names", () => {
+      const deltas = reconcileStats([goal("p1")], [goal("p2")]);
+      expect(deltas.get("p1")).toMatchObject({ goals: -1 });
+      expect(deltas.get("p2")).toMatchObject({ goals: 1 });
+    });
+
+    it("changes nothing when live mode and the box score agree", () => {
+      expect(reconcileStats([goal("p1")], [goal("p1")]).size).toBe(0);
+    });
+
+    it("leaves assists to the school's own totals", () => {
+      const assisted = { type: "goal" as const, player_id: "p1", assist_player_id: "p2" };
+      expect(reconcileStats([assisted], [{ ...assisted, assist_player_id: null }]).size).toBe(0);
+    });
   });
 });
